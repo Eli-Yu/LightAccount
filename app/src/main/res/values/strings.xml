@@ -1,0 +1,10 @@
+<resources>
+    <string name="app_name">轻记账</string>
+    <string name="action_settings">Settings</string>
+    <string name="textView_type_name">类型</string>
+    <string name="add_type">添加类型</string>
+    <string name="edit_manageType">输入类型名称</string>
+    <string name="manageType">类型管理</string>
+    <string name="editText_money">金额</string>
+    <string name="editText_note">备注</string>
+</resources>
