@@ -2,8 +2,6 @@ package com.eli.lightaccount;
 
 import android.content.DialogInterface;
 import android.database.Cursor;
-import android.database.sqlite.SQLiteDatabase;
-import android.graphics.Color;
 import android.os.Build;
 import android.os.Bundle;
 import android.support.design.widget.FloatingActionButton;
@@ -11,7 +9,6 @@ import android.support.design.widget.Snackbar;
 import android.support.v7.app.AlertDialog;
 import android.support.v7.app.AppCompatActivity;
 import android.support.v7.widget.Toolbar;
-import android.view.Gravity;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.Menu;
@@ -22,22 +19,19 @@ import android.widget.Button;
 import android.widget.DatePicker;
 import android.widget.EditText;
 import android.widget.ListView;
-import android.widget.RadioButton;
 import android.widget.RadioGroup;
 import android.widget.Spinner;
-import android.widget.TextView;
 import android.widget.Toast;
 
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
-import java.util.Date;
 import java.util.List;
 
 public class MainActivity extends AppCompatActivity {
 
     private List<ItemBean> mItemBeanList;
-    private List<String> mTypeS;
+    private List<String> mTypeString;
     private List<TypeBean> mTypeList;
     private DataBaseHelper mDatabaseHelper;
     private ItemListAdapter mAdapter;
@@ -52,7 +46,7 @@ public class MainActivity extends AppCompatActivity {
         mDatabaseHelper = new DataBaseHelper(this);
         mItemBeanList = new ArrayList<>();
         mTypeList = new ArrayList<>();
-        mTypeS = new ArrayList<>();
+        mTypeString = new ArrayList<>();
         ListView itemList = findViewById(R.id.list_view_main);
         mDatabaseHelper.getWritableDatabase();
         initItemData();
@@ -82,7 +76,7 @@ public class MainActivity extends AppCompatActivity {
                 //设置类型下拉框的项目，从Type表中获取
 
 
-//                mTypeS = new ArrayList<>();
+//                mTypeString = new ArrayList<>();
 
 //                Cursor cursor= mDatabaseHelper.getAllTypeData("TypePayment");
 //                if(cursor != null) {
@@ -90,17 +84,17 @@ public class MainActivity extends AppCompatActivity {
 //                        TypeBean typeBean = new TypeBean();
 //                        typeBean.setTypeName(cursor.getString(cursor.getColumnIndex("name")));
 //                        typeBean.setTypeId(cursor.getString(cursor.getColumnIndex("id")));
-//                        mTypeS.add(typeBean.getTypeName());
+//                        mTypeString.add(typeBean.getTypeName());
 //                        mTypeList.add(typeBean);
 //                    }
 //                    cursor.close();
 //                }
 
 //                final ArrayAdapter<String> adapter;
-//                adapter = new ArrayAdapter<String>(MainActivity.this, android.R.layout.simple_spinner_item, mTypeS);
+//                adapter = new ArrayAdapter<String>(MainActivity.this, android.R.layout.simple_spinner_item, mTypeString);
 
                 //建立Spinner的监听器，用来确定获取到的类型
-                set_mTypeList(updateItem.getItemCategory());
+                setTypeList(updateItem.getItemCategory());
                 final ArrayAdapter<TypeBean> adapter;
                 adapter = new ArrayAdapter<TypeBean>(MainActivity.this, android.R.layout.simple_spinner_item, mTypeList);
                 adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
@@ -161,12 +155,12 @@ public class MainActivity extends AppCompatActivity {
                                 typeBean.setTypeName(manageType.getText().toString());
                                 typeBean.setTypeId(Long.toString(System.currentTimeMillis()));
 
-                                if(mTypeS.contains(typeBean.getTypeName())) {
+                                if(mTypeString.contains(typeBean.getTypeName())) {
                                     Toast.makeText(MainActivity.this, "此类型已经存在", Toast.LENGTH_LONG).show();
                                 } else {
                                     //将新的类型数据添加到相应的类型表中
                                     mDatabaseHelper.insertType(typeBean,"Type" + updateItem.getItemCategory());
-//                                    mTypeS.add(typeBean.getTypeName());
+//                                    mTypeString.add(typeBean.getTypeName());
                                     //将新类型添加到类型List，并将选中值设为新添加的类型
                                     mTypeList.add(typeBean);
                                     type.setSelection(mTypeList.size() -  1);
@@ -183,7 +177,7 @@ public class MainActivity extends AppCompatActivity {
                 //用列表项中的数据初始化控件
 //                updateItem = mItemBeanList.get(position);
 //                category.setSelected();
-                type.setSelection(mTypeS.indexOf(updateItem.getItemType()));
+                type.setSelection(mTypeString.indexOf(updateItem.getItemType()));
                 money.setText(updateItem.getItemMoney());
                 note.setText(updateItem.getItemNote());
                 String[] oldDate = updateItem.getItemDate().split("-");
@@ -259,19 +253,19 @@ public class MainActivity extends AppCompatActivity {
 
 
                 //设置类型下拉框的项目，从Type表中获取
-                mTypeS = new ArrayList<>();
+                mTypeString = new ArrayList<>();
                 Cursor cursor= mDatabaseHelper.getAllTypeData("TypePayment");
                 if(cursor != null) {
                     while (cursor.moveToNext()) {
                         String temp = cursor.getString(cursor.getColumnIndex("name"));
-                        mTypeS.add(temp);
+                        mTypeString.add(temp);
                     }
                     cursor.close();
                 }
 
                 //建立Spinner的监听器，用来确定获取到的类型
                 final ArrayAdapter<String> adapter;
-                adapter = new ArrayAdapter<String>(MainActivity.this, android.R.layout.simple_spinner_item, mTypeS);
+                adapter = new ArrayAdapter<String>(MainActivity.this, android.R.layout.simple_spinner_item, mTypeString);
                 adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
                 type.setAdapter(adapter);
                 type.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
@@ -304,12 +298,12 @@ public class MainActivity extends AppCompatActivity {
                                 TypeBean typeBean = new TypeBean();
                                 typeBean.setTypeName(manageType.getText().toString());
 
-                                if(mTypeS.contains(typeBean.getTypeName())) {
+                                if(mTypeString.contains(typeBean.getTypeName())) {
                                     Toast.makeText(MainActivity.this, "此类型已经存在", Toast.LENGTH_LONG).show();
                                 } else {
                                     mDatabaseHelper.insertType(typeBean,"TypePayment");
-                                    mTypeS.add(typeBean.getTypeName());
-                                    type.setSelection(mTypeS.size() -  1);
+                                    mTypeString.add(typeBean.getTypeName());
+                                    type.setSelection(mTypeString.size() -  1);
 //                                    itemBean.setItemType(typeBean.getTypeName());
                                 }
                             }
@@ -342,7 +336,7 @@ public class MainActivity extends AppCompatActivity {
                         itemBean.setItemDate(date.getYear() + "-" + (date.getMonth() + 1) + "-" + date.getDayOfMonth());
 
                         /// 检测金额是否为空，为空则取消操作
-                        if (!itemBean.getItemMoney().isEmpty()) {
+                        if (!itemBean.getItemMoney().isEmpty() && Integer.parseInt(itemBean.getItemMoney()) > 0) {
                             //将数据插入数据库
                             if (tableTag == R.id.radio_button_payment) {
                                 itemBean.setItemCategory("Payment");
@@ -356,7 +350,7 @@ public class MainActivity extends AppCompatActivity {
                             //刷新列表，显示最新插入的数据
                             mAdapter.notifyDataSetChanged();
                         } else {
-                            Toast.makeText(MainActivity.this, "金额不能为空", Toast.LENGTH_LONG).show();
+                            Toast.makeText(MainActivity.this, "金额不能为空且大于0", Toast.LENGTH_LONG).show();
                         }
                     }
                 });
@@ -431,14 +425,16 @@ public class MainActivity extends AppCompatActivity {
      * 根据账目类别设置类型列表
      * @param table 表名（支出还是收入）
      */
-    private void set_mTypeList(String table) {
+    private void setTypeList(String table) {
         Cursor cursor= mDatabaseHelper.getAllTypeData("Type" + table);
         if(cursor != null) {
             mTypeList.clear();
+            mTypeString.clear();
             while (cursor.moveToNext()) {
                 TypeBean typeBean = new TypeBean();
                 typeBean.setTypeName(cursor.getString(cursor.getColumnIndex("name")));
                 typeBean.setTypeId(cursor.getString(cursor.getColumnIndex("id")));
+                mTypeString.add(typeBean.getTypeName());
                 mTypeList.add(typeBean);
             }
             cursor.close();
