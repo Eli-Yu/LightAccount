@@ -2,7 +2,7 @@
     <string name="app_name">轻记账</string>
     <string name="action_settings">消费趋势</string>
     <string name="action_export">数据导出</string>
-    <string name="action_inport">数据导入</string>
+    <string name="action_import">数据导入</string>
     <string name="textView_type_name">类型</string>
     <string name="add_type">添加类型</string>
     <string name="edit_manageType">输入类型名称</string>
