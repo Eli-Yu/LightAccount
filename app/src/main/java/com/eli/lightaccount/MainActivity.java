@@ -242,7 +242,7 @@ public class MainActivity extends AppCompatActivity {
 
 
         //增加账目按钮
-        FloatingActionButton fab = (FloatingActionButton) findViewById(R.id.fab);
+        FloatingActionButton fab = (FloatingActionButton) findViewById(R.id.fab_add);
         fab.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(final View view) {
