@@ -9,4 +9,5 @@
     <string name="manageType">类型管理</string>
     <string name="editText_money">金额</string>
     <string name="editText_note">备注</string>
+    <string name="selectType">选择类型</string>
 </resources>
