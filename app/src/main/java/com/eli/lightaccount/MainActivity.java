@@ -300,8 +300,8 @@ public class MainActivity extends AppCompatActivity {
 
 
         //增加账目按钮
-        FloatingActionButton fab = (FloatingActionButton) findViewById(R.id.fab_add);
-        fab.setOnClickListener(new View.OnClickListener() {
+        FloatingActionButton fabAdd = (FloatingActionButton) findViewById(R.id.fab_add);
+        fabAdd.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(final View view) {
                 AlertDialog.Builder builder = new AlertDialog.Builder(MainActivity.this);
@@ -457,6 +457,30 @@ public class MainActivity extends AppCompatActivity {
 
                 //创建并显示dialog
                 builder.create().show();
+            }
+        });
+
+
+        //查询账目按钮
+        FloatingActionButton fabQuery = (FloatingActionButton) findViewById(R.id.fab_query);
+
+        /**
+         * 设定查询按钮监听事件
+         */
+        fabQuery.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                AlertDialog.Builder queryBuilder = new AlertDialog.Builder(MainActivity.this);
+                LayoutInflater queryInflater = LayoutInflater.from(MainActivity.this);
+                View queryView = queryInflater.inflate(R.layout.query, null);
+
+
+                //将布局设置给Dialog
+                queryBuilder.setView(queryView);
+                //设置对话框标题
+                queryBuilder.setTitle("查询");
+
+                queryBuilder.create().show();
             }
         });
     }
