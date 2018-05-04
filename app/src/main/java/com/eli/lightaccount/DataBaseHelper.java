@@ -99,6 +99,16 @@ public class DataBaseHelper extends SQLiteOpenHelper {
         database.delete(table, "id = ?", new String[]{id});
     }
 
+    /**
+     * 删除类型
+     * @param table 表类型：收入还是支出，函数中连接为表名
+     * @param id 类型记录的id
+     */
+    public void deleteType(String table, String id) {
+        SQLiteDatabase database = getWritableDatabase();
+        database.delete(table, "id = ?", new String[] {id});
+    }
+
     //修改账目数据
     public void updateItem(ItemBean itemBean, String table, String id) {
         SQLiteDatabase database = getWritableDatabase();
@@ -111,11 +121,11 @@ public class DataBaseHelper extends SQLiteOpenHelper {
     }
 
     //修改类型数据
-    public void updateType(TypeBean typeBean, String id, String table) {
+    public void updateType(TypeBean typeBean, String table) {
         SQLiteDatabase database = getWritableDatabase();
         ContentValues type_cv = new ContentValues();
         type_cv.put("name", typeBean.getTypeName());
-        database.update(table, type_cv, "id = ?" ,new String[] {id});
+        database.update(table, type_cv, "id = ?" ,new String[] {typeBean.getTypeId()});
     }
 
     //获取账目数据

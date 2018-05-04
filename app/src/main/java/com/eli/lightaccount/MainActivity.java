@@ -4,23 +4,30 @@ import android.content.DialogInterface;
 import android.database.Cursor;
 import android.os.Build;
 import android.os.Bundle;
+import android.os.DeadObjectException;
+import android.provider.MediaStore;
 import android.support.design.widget.FloatingActionButton;
 import android.support.design.widget.Snackbar;
 import android.support.v7.app.AlertDialog;
 import android.support.v7.app.AppCompatActivity;
 import android.support.v7.widget.Toolbar;
+import android.util.AndroidException;
+import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.Menu;
 import android.view.MenuItem;
+import android.widget.Adapter;
 import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
 import android.widget.Button;
 import android.widget.DatePicker;
 import android.widget.EditText;
 import android.widget.ListView;
+import android.widget.RadioButton;
 import android.widget.RadioGroup;
 import android.widget.Spinner;
+import android.widget.TextView;
 import android.widget.Toast;
 
 import java.util.ArrayList;
@@ -59,7 +66,7 @@ public class MainActivity extends AppCompatActivity {
             public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
                 final AlertDialog.Builder updateBuilder = new AlertDialog.Builder(MainActivity.this);
                 final LayoutInflater updateInflater = LayoutInflater.from(MainActivity.this);
-                View viewUpdate = updateInflater.inflate(R.layout.new_item_data,null);
+                View viewUpdate = updateInflater.inflate(R.layout.new_item_data, null);
                 final RadioGroup category = viewUpdate.findViewById(R.id.radio_group);
                 final Spinner type = viewUpdate.findViewById(R.id.spinner_type);
                 final EditText money = viewUpdate.findViewById(R.id.editText_money);
@@ -127,22 +134,9 @@ public class MainActivity extends AppCompatActivity {
 
 
 //                        listType.setAdapter(adapter);
-                        listType.setAdapter(new TypeListAdapter(MainActivity.this, mTypeList));
-
-                        listType.setOnItemClickListener(new AdapterView.OnItemClickListener() {
-                            @Override
-                            public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
-
-                            }
-                        });
-
-                        listType.setOnItemLongClickListener(new AdapterView.OnItemLongClickListener() {
-                            @Override
-                            public boolean onItemLongClick(AdapterView<?> parent, View view, int position, long id) {
-                                return true;
-                            }
-                        });
-
+//                        setTypeList(updateItem.getItemCategory());
+                        TypeListAdapter listAdapter = new TypeListAdapter(MainActivity.this, mTypeList);
+                        listType.setAdapter(listAdapter);
 
                         //将布局设置给Dialog
                         addBuilder.setView(viewManageType);
@@ -155,20 +149,96 @@ public class MainActivity extends AppCompatActivity {
                                 typeBean.setTypeName(manageType.getText().toString());
                                 typeBean.setTypeId(Long.toString(System.currentTimeMillis()));
 
-                                if(mTypeString.contains(typeBean.getTypeName())) {
-                                    Toast.makeText(MainActivity.this, "此类型已经存在", Toast.LENGTH_LONG).show();
+                                if (!typeBean.getTypeName().isEmpty()) {
+                                    if (mTypeString.contains(typeBean.getTypeName())) {
+                                        Toast.makeText(MainActivity.this, "此类型已经存在，添加失败", Toast.LENGTH_LONG).show();
+                                    } else {
+                                        //将新的类型数据添加到相应的类型表中
+                                        mDatabaseHelper.insertType(typeBean, "Type" + updateItem.getItemCategory());
+                                        //                                    mTypeString.add(typeBean.getTypeName());
+                                        //将新类型添加到类型List，并将选中值设为新添加的类型
+                                        mTypeList.add(typeBean);
+                                        mTypeString.add(typeBean.getTypeName());
+                                        type.setSelection(mTypeList.size() - 1);
+                                        //                                    itemBean.setItemType(typeBean.getTypeName());
+                                    }
                                 } else {
-                                    //将新的类型数据添加到相应的类型表中
-                                    mDatabaseHelper.insertType(typeBean,"Type" + updateItem.getItemCategory());
-//                                    mTypeString.add(typeBean.getTypeName());
-                                    //将新类型添加到类型List，并将选中值设为新添加的类型
-                                    mTypeList.add(typeBean);
-                                    type.setSelection(mTypeList.size() -  1);
-//                                    itemBean.setItemType(typeBean.getTypeName());
+                                    Toast.makeText(MainActivity.this, "类型名不能为空", Toast.LENGTH_LONG).show();
                                 }
                             }
                         });
-                        addBuilder.setNegativeButton("取消",null);
+                        addBuilder.setNegativeButton("取消", null);
+
+                        /**
+                         * 类型列表项目的管理功能：点击修改，长按删除
+                         */
+
+                        /**
+                         * 设定点击修改事件的监听器
+                         */
+                        listType.setOnItemClickListener(new AdapterView.OnItemClickListener() {
+                            @Override
+                            public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
+                                AlertDialog.Builder updateTypeBuilder = new AlertDialog.Builder(MainActivity.this);
+                                LayoutInflater updateTypeInflate = LayoutInflater.from(MainActivity.this);
+                                View updateTypeView = updateTypeInflate.inflate(R.layout.manage_type, null);
+                                TextView text = updateTypeView.findViewById(R.id.textView_add_type);
+                                EditText updateType = updateTypeView.findViewById(R.id.edit_manageType);
+                                updateTypeView.findViewById(R.id.list_view_type).setVisibility(View.GONE);
+                                text.setText("修改为：");
+
+                                updateTypeBuilder.setView(updateTypeView);
+                                final TypeBean update = mTypeList.get(position);
+
+                                updateTypeBuilder.setPositiveButton("确认", new DialogInterface.OnClickListener() {
+                                    @Override
+                                    public void onClick(DialogInterface dialog, int which) {
+                                        if (!updateType.getText().toString().isEmpty()) {   //检测是否为空
+                                            if (mTypeString.contains(updateType.getText().toString())) {    //检查是否重复
+                                                Toast.makeText(MainActivity.this, "此类型已经存在，修改失败", Toast.LENGTH_LONG).show();
+                                            } else {
+                                                update.setTypeName(updateType.getText().toString());
+                                                mDatabaseHelper.updateType(update, "Type" + updateItem.getItemCategory());
+//                                                setTypeList(updateItem.getItemCategory());
+                                                //刷新列表
+                                                listAdapter.notifyDataSetChanged();
+                                            }
+                                        } else {    //类型名为空时，不能修改
+                                            Toast.makeText(MainActivity.this, "不能修改为空", Toast.LENGTH_LONG).show();
+                                        }
+                                    }
+                                });
+                                updateTypeBuilder.setNegativeButton("取消", null);
+                                updateTypeBuilder.create().show();
+                            }
+                        });
+
+                        /**
+                         * 设定长按删除事件的监听器
+                         */
+                        listType.setOnItemLongClickListener(new AdapterView.OnItemLongClickListener() {
+                            @Override
+                            public boolean onItemLongClick(AdapterView<?> parent, View view, int position, long id) {
+                                final TypeBean typeDelete = mTypeList.get(position);
+                                Snackbar.make(view, "确认删除？", Snackbar.LENGTH_LONG).setAction("确定", new View.OnClickListener() {
+                                    @Override
+                                    public void onClick(View v) {
+                                        mDatabaseHelper.delete("Type" + updateItem.getItemCategory(), typeDelete.getTypeId());
+                                        mTypeList.remove(typeDelete);
+                                        mTypeString.remove(typeDelete.getTypeName());
+
+                                        //更新列表
+                                        listAdapter.notifyDataSetChanged();
+
+                                        //删除后将类型设为默认，即类型中的第一个
+                                        type.setSelection(0);
+                                    }
+                                }).show();
+                                return true;
+                            }
+                        });
+
+
                         addBuilder.create().show();
                     }
                 });
@@ -181,7 +251,7 @@ public class MainActivity extends AppCompatActivity {
                 money.setText(updateItem.getItemMoney());
                 note.setText(updateItem.getItemNote());
                 String[] oldDate = updateItem.getItemDate().split("-");
-                date.init(Integer.parseInt(oldDate[0]),Integer.parseInt(oldDate[1]) - 1,Integer.parseInt(oldDate[2]),null);
+                date.init(Integer.parseInt(oldDate[0]), Integer.parseInt(oldDate[1]) - 1, Integer.parseInt(oldDate[2]), null);
 
                 //设定布局
                 updateBuilder.setView(viewUpdate);
@@ -196,7 +266,7 @@ public class MainActivity extends AppCompatActivity {
                         updateItem.setItemMoney(money.getText().toString());
                         updateItem.setItemNote(note.getText().toString());
                         updateItem.setItemDate(date.getYear() + "-" + (date.getMonth() + 1) + "-" + date.getDayOfMonth());
-                        mDatabaseHelper.updateItem(updateItem,updateItem.getItemCategory(),updateItem.getItemId());
+                        mDatabaseHelper.updateItem(updateItem, updateItem.getItemCategory(), updateItem.getItemId());
                         //更新列表
                         mAdapter.notifyDataSetChanged();
 //                        long timeStamp = System.currentTimeMillis();
@@ -219,10 +289,10 @@ public class MainActivity extends AppCompatActivity {
             @Override
             public boolean onItemLongClick(AdapterView<?> parent, View view, int position, long id) {
                 final ItemBean itemDelete = mItemBeanList.get(position);
-                Snackbar.make(view,"确认删除？", Snackbar.LENGTH_LONG).setAction("确定", new View.OnClickListener() {
+                Snackbar.make(view, "确认删除？", Snackbar.LENGTH_LONG).setAction("确定", new View.OnClickListener() {
                     @Override
                     public void onClick(View v) {
-                        mDatabaseHelper.delete("Payment",itemDelete.getItemId());
+                        mDatabaseHelper.delete(itemDelete.getItemCategory(), itemDelete.getItemId());
                         mItemBeanList.remove(itemDelete);
                         //更新列表
                         mAdapter.notifyDataSetChanged();
@@ -231,8 +301,6 @@ public class MainActivity extends AppCompatActivity {
                 return true;
             }
         });
-
-
 
 
         //增加账目按钮
@@ -253,16 +321,17 @@ public class MainActivity extends AppCompatActivity {
 
 
                 //设置类型下拉框的项目，从Type表中获取
-                mTypeString = new ArrayList<>();
-                Cursor cursor= mDatabaseHelper.getAllTypeData("TypePayment");
-                if(cursor != null) {
-                    while (cursor.moveToNext()) {
-                        String temp = cursor.getString(cursor.getColumnIndex("name"));
-                        mTypeString.add(temp);
-                    }
-                    cursor.close();
-                }
+//                mTypeString = new ArrayList<>();
+//                Cursor cursor= mDatabaseHelper.getAllTypeData("TypePayment");
+//                if(cursor != null) {
+//                    while (cursor.moveToNext()) {
+//                        String temp = cursor.getString(cursor.getColumnIndex("name"));
+//                        mTypeString.add(temp);
+//                    }
+//                    cursor.close();
+//                }
 
+                setTypeList("Payment");
                 //建立Spinner的监听器，用来确定获取到的类型
                 final ArrayAdapter<String> adapter;
                 adapter = new ArrayAdapter<String>(MainActivity.this, android.R.layout.simple_spinner_item, mTypeString);
@@ -277,6 +346,36 @@ public class MainActivity extends AppCompatActivity {
                     @Override
                     public void onNothingSelected(AdapterView<?> adapterView) {
                         Toast.makeText(MainActivity.this, "未选中", Toast.LENGTH_LONG).show();
+                    }
+                });
+
+
+                /**
+                 * 设置一个单选按钮组的监听器，
+                 * 监听选择变化事件，
+                 * 为了实现根据选中情况，动态调整spinner中的类型
+                 */
+                final String table;
+                category.setOnCheckedChangeListener(new RadioGroup.OnCheckedChangeListener() {
+                    @Override
+                    public void onCheckedChanged(RadioGroup group, int checkedId) {
+                        switch (checkedId) {
+                            case R.id.radio_button_income:
+                                setTypeList("Income");
+//                                type.setEnabled(false);
+                                type.setAdapter(adapter);
+//                                Log.i("radio","Income");
+                                break;
+                            case R.id.radio_button_payment:
+                                setTypeList("Payment");
+                                type.setAdapter(adapter);
+//                                Log.i("radio","Payment");
+                                break;
+                            default:
+                                return;
+                        }
+//                        RadioButton radioButton = viewDialog.findViewById(checkedId);
+//                        Toast.makeText(MainActivity.this, checkedId + "&&" + R.id.radio_button_income,Toast.LENGTH_LONG).show();
                     }
                 });
 
@@ -298,21 +397,20 @@ public class MainActivity extends AppCompatActivity {
                                 TypeBean typeBean = new TypeBean();
                                 typeBean.setTypeName(manageType.getText().toString());
 
-                                if(mTypeString.contains(typeBean.getTypeName())) {
+                                if (mTypeString.contains(typeBean.getTypeName())) {
                                     Toast.makeText(MainActivity.this, "此类型已经存在", Toast.LENGTH_LONG).show();
                                 } else {
-                                    mDatabaseHelper.insertType(typeBean,"TypePayment");
+                                    mDatabaseHelper.insertType(typeBean, "TypePayment");
                                     mTypeString.add(typeBean.getTypeName());
-                                    type.setSelection(mTypeString.size() -  1);
+                                    type.setSelection(mTypeString.size() - 1);
 //                                    itemBean.setItemType(typeBean.getTypeName());
                                 }
                             }
                         });
-                        addBuilder.setNegativeButton("取消",null);
+                        addBuilder.setNegativeButton("取消", null);
                         addBuilder.create().show();
                     }
                 });
-
 
 
                 //将布局设置给Dialog
@@ -340,7 +438,7 @@ public class MainActivity extends AppCompatActivity {
                             //将数据插入数据库
                             if (tableTag == R.id.radio_button_payment) {
                                 itemBean.setItemCategory("Payment");
-                                mDatabaseHelper.insertItem(itemBean,"Payment");
+                                mDatabaseHelper.insertItem(itemBean, "Payment");
                             } else {
                                 itemBean.setItemCategory("Income");
                                 mDatabaseHelper.insertItem(itemBean, "Income");
@@ -355,7 +453,7 @@ public class MainActivity extends AppCompatActivity {
                     }
                 });
                 //取消按钮
-                builder.setNegativeButton("取消",null);
+                builder.setNegativeButton("取消", null);
 
                 //创建并显示dialog
                 builder.create().show();
@@ -372,7 +470,7 @@ public class MainActivity extends AppCompatActivity {
 //            mDatabaseHelper.insertItem(itemBean,"Income");
 //        }
         Cursor cursor = mDatabaseHelper.getAllItemData("Payment");
-        if(cursor != null) {
+        if (cursor != null) {
             while (cursor.moveToNext()) {
                 ItemBean itemBean = new ItemBean();
                 itemBean.setItemId(cursor.getString(cursor.getColumnIndex("id")));
@@ -386,7 +484,7 @@ public class MainActivity extends AppCompatActivity {
             cursor.close();
         }
         cursor = mDatabaseHelper.getAllItemData("Income");
-        if(cursor != null) {
+        if (cursor != null) {
             while (cursor.moveToNext()) {
                 ItemBean itemBean = new ItemBean();
                 itemBean.setItemId(cursor.getString(cursor.getColumnIndex("id")));
@@ -423,11 +521,12 @@ public class MainActivity extends AppCompatActivity {
 
     /**
      * 根据账目类别设置类型列表
+     *
      * @param table 表名（支出还是收入）
      */
     private void setTypeList(String table) {
-        Cursor cursor= mDatabaseHelper.getAllTypeData("Type" + table);
-        if(cursor != null) {
+        Cursor cursor = mDatabaseHelper.getAllTypeData("Type" + table);
+        if (cursor != null) {
             mTypeList.clear();
             mTypeString.clear();
             while (cursor.moveToNext()) {
@@ -443,8 +542,8 @@ public class MainActivity extends AppCompatActivity {
 
 
     private void initTypeData() {
-        Cursor cursor= mDatabaseHelper.getAllTypeData("TypePayment");
-        if(cursor != null) {
+        Cursor cursor = mDatabaseHelper.getAllTypeData("TypePayment");
+        if (cursor != null) {
             while (cursor.moveToNext()) {
                 TypeBean typeBean = new TypeBean();
                 typeBean.setTypeName(cursor.getString(cursor.getColumnIndex("name")));
