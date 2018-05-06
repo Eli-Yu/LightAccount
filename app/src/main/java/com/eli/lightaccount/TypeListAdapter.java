@@ -60,7 +60,7 @@ public class TypeListAdapter extends BaseAdapter {
         ViewHolder viewHolder;
         if (convertView == null) { //没有缓存时候
             viewHolder = new ViewHolder();
-            convertView = mLayoutInflater.inflate(R.layout.type_item,null);
+            convertView = mLayoutInflater.inflate(R.layout.type_item,parent, false);
 
             viewHolder.mTextViewName = convertView.findViewById(R.id.textView_type_name);
             viewHolder.mTextViewId = convertView.findViewById(R.id.textView_type_id);

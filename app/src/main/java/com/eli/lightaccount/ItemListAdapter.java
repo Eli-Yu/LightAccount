@@ -44,7 +44,7 @@ public class ItemListAdapter extends BaseAdapter {
         ViewHolder viewHolder;
         if (convertView == null) { //缓存中没有viewHolder时候
             viewHolder = new ViewHolder();
-            convertView = mLayoutInflater.inflate(R.layout.list_item, null);
+            convertView = mLayoutInflater.inflate(R.layout.list_item, parent, false);
 
             viewHolder.mTextViewType = convertView.findViewById(R.id.textView_type);
             viewHolder.mTextViewNote = convertView.findViewById(R.id.textView_Note);
