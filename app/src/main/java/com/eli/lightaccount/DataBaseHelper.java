@@ -128,22 +128,37 @@ public class DataBaseHelper extends SQLiteOpenHelper {
         database.update(table, type_cv, "id = ?" ,new String[] {typeBean.getTypeId()});
     }
 
-    //获取账目数据
+    //获取所有账目数据
     public Cursor getAllItemData(String table) {
         SQLiteDatabase database = getWritableDatabase();
         return database.query(table,null,null,null,null,null,"date ASC");
     }
 
-    //获取类型数据
+    //获取所有类型数据
     public Cursor getAllTypeData(String table) {
         SQLiteDatabase database = getWritableDatabase();
         return database.query(table, null, null ,null ,null, null, null);
     }
 
     //查询账目数据
-//    public Cursor queryItemData(ItemBean itemBean, String table) {
-//        SQLiteDatabase database = getWritableDatabase();
-//    }
+    public Cursor queryItemData(String table, boolean[] columns, String[] condition) {
+        SQLiteDatabase database = getWritableDatabase();
+        String[] allCol = new String[]{"type", "money", "note","date"};
+        String col = new String();
+        int sum = 0;
+        for (boolean b: columns) if (b) sum++;
+        for (int i = 0; i < columns.length; i++)
+            if (columns[i]) {
+                col = col + allCol[i] + "=? ";
+                if (--sum > 0) col += "and ";
+            }
+        return database.query(table,null, col, condition,null,null,"date ASC");
+    }
+
+    public Cursor queryItemData(String table, String columns, String[] condition) {
+        SQLiteDatabase database = getWritableDatabase();
+        return database.query(table,null, columns, condition,null,null,"date ASC");
+    }
 
     @Override
     public void onUpgrade(SQLiteDatabase db, int oldVersion, int newVersion) {
