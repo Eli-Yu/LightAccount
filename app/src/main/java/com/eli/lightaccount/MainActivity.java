@@ -1,14 +1,17 @@
 package com.eli.lightaccount;
 
 import android.content.DialogInterface;
+import android.content.Intent;
 import android.database.Cursor;
 import android.os.Build;
 import android.os.Bundle;
+import android.provider.FontsContract;
 import android.support.design.widget.FloatingActionButton;
 import android.support.design.widget.Snackbar;
 import android.support.v7.app.AlertDialog;
 import android.support.v7.app.AppCompatActivity;
 import android.support.v7.widget.Toolbar;
+import android.text.BoringLayout;
 import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -17,14 +20,18 @@ import android.view.MenuItem;
 import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
 import android.widget.Button;
+import android.widget.CompoundButton;
 import android.widget.DatePicker;
 import android.widget.EditText;
 import android.widget.ListView;
 import android.widget.RadioGroup;
 import android.widget.Spinner;
+import android.widget.Switch;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import java.io.Serializable;
+import java.nio.charset.CoderMalfunctionError;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
@@ -62,7 +69,7 @@ public class MainActivity extends AppCompatActivity {
             public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
                 final AlertDialog.Builder updateBuilder = new AlertDialog.Builder(MainActivity.this);
                 final LayoutInflater updateInflater = LayoutInflater.from(MainActivity.this);
-                View viewUpdate = updateInflater.inflate(R.layout.new_item_data, null);
+                View viewUpdate = updateInflater.inflate(R.layout.new_item_data, parent, false);
                 final RadioGroup category = viewUpdate.findViewById(R.id.radio_group);
                 final Spinner type = viewUpdate.findViewById(R.id.spinner_type);
                 final EditText money = viewUpdate.findViewById(R.id.editText_money);
@@ -177,7 +184,7 @@ public class MainActivity extends AppCompatActivity {
 //                            public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
 //                                AlertDialog.Builder updateTypeBuilder = new AlertDialog.Builder(MainActivity.this);
 //                                LayoutInflater updateTypeInflate = LayoutInflater.from(MainActivity.this);
-//                                View updateTypeView = updateTypeInflate.inflate(R.layout.manage_type, null);
+//                                View updateTypeView = updateTypeInflate.inflate(R.layout.manage_type, parent, false);
 //                                TextView text = updateTypeView.findViewById(R.id.textView_add_type);
 //                                EditText updateType = updateTypeView.findViewById(R.id.edit_manageType);
 //                                updateTypeView.findViewById(R.id.list_view_type).setVisibility(View.GONE);
@@ -252,22 +259,29 @@ public class MainActivity extends AppCompatActivity {
                 //设定布局
                 updateBuilder.setView(viewUpdate);
 
+//                Toast.makeText(MainActivity.this, updateItem.getItemId(),Toast.LENGTH_LONG).show();
+
                 updateBuilder.setTitle("修改记录");
 
                 //设定确认事件
                 updateBuilder.setPositiveButton("确定", new DialogInterface.OnClickListener() {
                     @Override
                     public void onClick(DialogInterface dialog, int which) {
-                        updateItem.setItemType(type.getSelectedItem().toString());
-                        updateItem.setItemMoney(money.getText().toString());
-                        updateItem.setItemNote(note.getText().toString());
-                        updateItem.setItemDate(date.getYear() + "-" + (date.getMonth() + 1) + "-" + date.getDayOfMonth());
-                        mDatabaseHelper.updateItem(updateItem, updateItem.getItemCategory(), updateItem.getItemId());
-                        //更新列表
-                        mAdapter.notifyDataSetChanged();
+
+                        if (!money.getText().toString().isEmpty() && Float.parseFloat(money.getText().toString()) > 0) {
+                            updateItem.setItemType(type.getSelectedItem().toString());
+                            updateItem.setItemMoney(money.getText().toString());
+                            updateItem.setItemNote(note.getText().toString());
+                            updateItem.setItemDate(date.getYear() + "-" + (date.getMonth() + 1) + "-" + date.getDayOfMonth());
+                            mDatabaseHelper.updateItem(updateItem, updateItem.getItemCategory(), updateItem.getItemId());
+                            //更新列表
+                            mAdapter.notifyDataSetChanged();
 //                        long timeStamp = System.currentTimeMillis();
 //                        Date d = new Date(timeStamp);
 //                        Toast.makeText(MainActivity.this, Long.toString(timeStamp)+ "和" + d, Toast.LENGTH_LONG ).show();
+                        } else {
+                            Toast.makeText(MainActivity.this, "金额不能为空且大于0", Toast.LENGTH_LONG).show();
+                        }
                     }
                 });
 
@@ -327,7 +341,9 @@ public class MainActivity extends AppCompatActivity {
 //                    cursor.close();
 //                }
 
-                setTypeList(itemCategory);
+                if (category.getCheckedRadioButtonId() == R.id.radio_button_payment)
+                    setTypeList("Payment");
+                else setTypeList("Income");
 //                setTypeList("Payment");
                 //建立Spinner的监听器，用来确定获取到的类型
                 final ArrayAdapter<String> adapter;
@@ -434,7 +450,7 @@ public class MainActivity extends AppCompatActivity {
                         itemBean.setItemDate(date.getYear() + "-" + (date.getMonth() + 1) + "-" + date.getDayOfMonth());
 
                         /// 检测金额是否为空，为空则取消操作
-                        if (!itemBean.getItemMoney().isEmpty() && Integer.parseInt(itemBean.getItemMoney()) > 0) {
+                        if (!itemBean.getItemMoney().isEmpty() && Float.parseFloat(money.getText().toString()) > 0) {
                             //将数据插入数据库
                             if (tableTag == R.id.radio_button_payment) {
                                 itemBean.setItemCategory("Payment");
@@ -448,6 +464,7 @@ public class MainActivity extends AppCompatActivity {
                             //刷新列表，显示最新插入的数据
                             mAdapter.notifyDataSetChanged();
                         } else {
+//                            Toast.makeText(MainActivity.this, type.getSelectedItem().toString(), Toast.LENGTH_LONG).show();
                             Toast.makeText(MainActivity.this, "金额不能为空且大于0", Toast.LENGTH_LONG).show();
                         }
                     }
@@ -470,19 +487,337 @@ public class MainActivity extends AppCompatActivity {
         fabQuery.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                AlertDialog.Builder queryBuilder = new AlertDialog.Builder(MainActivity.this);
-                LayoutInflater queryInflater = LayoutInflater.from(MainActivity.this);
-                View queryView = queryInflater.inflate(R.layout.query, null);
+                AlertDialog.Builder builderQuery = new AlertDialog.Builder(MainActivity.this);
+                LayoutInflater inflaterQuery = LayoutInflater.from(MainActivity.this);
+                View viewQuery = inflaterQuery.inflate(R.layout.query, null);
+
+                RadioGroup category = viewQuery.findViewById(R.id.radio_group);
+                Switch switchCategory = viewQuery.findViewById(R.id.switch_category);
+
+                Spinner type = viewQuery.findViewById(R.id.spinner_type);
+                Switch switchType = viewQuery.findViewById(R.id.switch_type);
+
+                EditText money = viewQuery.findViewById(R.id.editText_money);
+                Switch switchMoney = viewQuery.findViewById(R.id.switch_money);
+
+                EditText note = viewQuery.findViewById(R.id.editText_note);
+                Switch switchNote = viewQuery.findViewById(R.id.switch_note);
+
+                DatePicker date = viewQuery.findViewById(R.id.datePicker_date);
+                Switch switchDate = viewQuery.findViewById(R.id.switch_date);
+
+                ItemBean itemBean = new ItemBean();
+
+                //初始化显示
+//                category.setEnabled(switchCategory.isChecked());
+                //设定单选按钮组的可用性
+                for (int i = 0; i < category.getChildCount(); i++) {
+                    category.getChildAt(i).setEnabled(switchCategory.isChecked());
+                }
+                type.setEnabled(switchType.isChecked());
+                money.setEnabled(switchMoney.isChecked());
+                note.setEnabled(switchNote.isChecked());
+                date.setEnabled(switchDate.isChecked());
+
+
+                /**
+                 * 设定各个switch按钮的状态变化监听器，实现动态控制各个控件的可用性变化
+                 */
+                switchCategory.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
+                    @Override
+                    public void onCheckedChanged(CompoundButton buttonView, boolean isChecked) {
+                        for (int i = 0; i < category.getChildCount(); i++) {
+                            category.getChildAt(i).setEnabled(switchCategory.isChecked());
+                        }
+                    }
+                });
+
+                switchType.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
+                    @Override
+                    public void onCheckedChanged(CompoundButton buttonView, boolean isChecked) {
+                        type.setEnabled(switchType.isChecked());
+                    }
+                });
+
+                switchMoney.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
+                    @Override
+                    public void onCheckedChanged(CompoundButton buttonView, boolean isChecked) {
+                        money.setEnabled(switchMoney.isChecked());
+                    }
+                });
+
+                switchNote.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
+                    @Override
+                    public void onCheckedChanged(CompoundButton buttonView, boolean isChecked) {
+                        note.setEnabled(switchNote.isChecked());
+                    }
+                });
+
+                switchDate.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
+                    @Override
+                    public void onCheckedChanged(CompoundButton buttonView, boolean isChecked) {
+                        date.setEnabled(switchDate.isChecked());
+                    }
+                });
+
+                //设置类型下拉框的项目，从Type表中获取
+                if (category.getCheckedRadioButtonId() == R.id.radio_button_payment)
+                    setTypeList("Payment");
+                else setTypeList("Income");
+
+                //建立Spinner的监听器，用来确定获取到的类型
+                final ArrayAdapter<String> adapter;
+                adapter = new ArrayAdapter<String>(MainActivity.this, android.R.layout.simple_spinner_item, mTypeString);
+                adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
+                type.setAdapter(adapter);
+
+                /**
+                 * 设置一个单选按钮组的监听器，
+                 * 监听账目分类选择变化事件，
+                 * 为了实现根据选中情况，动态调整spinner中的类型
+                 */
+
+                category.setOnCheckedChangeListener(new RadioGroup.OnCheckedChangeListener() {
+                    @Override
+                    public void onCheckedChanged(RadioGroup group, int checkedId) {
+                        switch (checkedId) {
+                            case R.id.radio_button_income:
+                                itemCategory = "Income";
+                                break;
+                            case R.id.radio_button_payment:
+                                itemCategory = "Payment";
+                                break;
+                            default:
+                                return;
+                        }
+                        setTypeList(itemCategory);
+                        type.setAdapter(adapter);
+                    }
+                });
 
 
                 //将布局设置给Dialog
-                queryBuilder.setView(queryView);
+                builderQuery.setView(viewQuery);
                 //设置对话框标题
-                queryBuilder.setTitle("查询");
+                builderQuery.setTitle("查询");
 
-                queryBuilder.create().show();
+                builderQuery.setPositiveButton("确定", new DialogInterface.OnClickListener() {
+                    @Override
+                    public void onClick(DialogInterface dialog, int which) {
+
+//                        boolean[] columns = new boolean[4];
+//                        columns[0] = switchType.isChecked();
+//                        columns[1] = switchMoney.isChecked();
+//                        columns[2] = switchNote.isChecked();
+//                        columns[3] = switchDate.isChecked();
+//                        boolean isQuery = columns[0];
+//                        for (boolean b : columns)
+//                            isQuery = isQuery || b;
+////                        String temp = new String();
+////                        for (boolean b: columns)
+////                            temp += Boolean.toString(b) ;
+//                        Log.i("temp", Boolean.toString(isQuery));
+////                        Toast.makeText(MainActivity.this, temp, Toast.LENGTH_LONG).show();
+//                        if (switchCategory.isChecked() || isQuery)  {
+//                            if (!isQuery)
+//                                mQueryList = mItemBeanList;
+//                            else {
+//                                String[] condition = new String[]{type.getSelectedItem().toString(), money.getText().toString(),
+//                                note.getText().toString(), };
+//                                condition
+//                            }
+//                        }
+
+                        //创建一个StringBuffer对象用于拼接查询语句
+                        StringBuffer col = new StringBuffer();
+                        List<String> columns = new ArrayList<>();
+                        List<String> condition = new ArrayList<>();
+                        List<ItemBean> mQueryList = new ArrayList<>();
+                        if (switchType.isChecked() || switchMoney.isChecked() || switchNote.isChecked() || switchDate.isChecked()) {
+                            if (switchType.isChecked()) {
+                                columns.add("type");
+                                condition.add(type.getSelectedItem().toString());
+                            }
+                            if (switchMoney.isChecked()) {
+                                columns.add("money");
+                                condition.add(money.getText().toString());
+                            }
+                            if (switchNote.isChecked()) {
+                                columns.add("note");
+                                condition.add(note.getText().toString());
+                            }
+                            if (switchDate.isChecked()) {
+                                columns.add("date");
+                                condition.add(date.getYear() + "-" + (date.getMonth() + 1) + "-" + date.getDayOfMonth());
+                            }
+                        }
+                        if (switchCategory.isChecked()) { //如果类别选项开启，分类查询（支出或收入）
+                            if (columns.isEmpty()) { //如果其他限定条件不设置时候，查询该类别下所有数据
+                                if (category.getCheckedRadioButtonId() == R.id.radio_button_payment) {
+                                    getItemData("Payment", mQueryList);
+                                } else {
+                                    getItemData("Income", mQueryList);
+                                }
+                            } else {//拼接查询条件
+                                if (columns.size() >= 2) {
+                                    for (int i = 0; i < columns.size() - 1; i++) {
+                                        col.append(columns.get(i));
+                                        col.append(" = ? and ");
+//                                        col = columns.get(i).toString() + " = ? and";
+                                    }
+//                                    col = columns.get(columns.size() - 1) + " = ?";
+                                    col.append(columns.get(columns.size() - 1));
+                                    col.append(" = ?");
+                                } else {
+//                                    col = columns.get(0) + " = ?";
+                                    col.append(columns.get(0));
+                                    col.append(" = ?");
+                                }
+
+                                //按类别查询
+                                Cursor cursor;
+                                String table;
+                                if (category.getCheckedRadioButtonId() == R.id.radio_button_payment) {
+                                    table = "Payment";
+                                } else {
+                                    table = "Income";
+                                }
+//                                Log.i("query", col.toString());
+                                cursor = mDatabaseHelper.queryItemData(table, col.toString(), condition.toArray(new String[condition.size()]));
+                                if (cursor != null) {
+                                    while (cursor.moveToNext()) {
+                                        ItemBean itemBean = new ItemBean();
+                                        itemBean.setItemId(cursor.getString(cursor.getColumnIndex("id")));
+                                        itemBean.setItemType(cursor.getString(cursor.getColumnIndex("type")));
+                                        itemBean.setItemNote(cursor.getString(cursor.getColumnIndex("note")));
+                                        itemBean.setItemDate(cursor.getString(cursor.getColumnIndex("date")));
+                                        itemBean.setItemMoney(cursor.getString(cursor.getColumnIndex("money")));
+                                        itemBean.setItemCategory(table);
+                                        mQueryList.add(itemBean);
+                                    }
+                                    cursor.close();
+                                }
+                            }
+                        } else { //类别选项不开启时候，同时查询两个类别中满足条件的结果
+                            if (!columns.isEmpty()) {   //拼接查询条件
+                                if (columns.size() >= 2) {
+                                    for (int i = 0; i < columns.size() - 1; i++) {
+//                                        col = columns.get(i) + " = ? and";
+                                        col.append(columns.get(i));
+                                        col.append(" = ? and ");
+                                    }
+//                                    col = columns.get(columns.size() - 1) + " = ?";
+                                    col.append(columns.get(columns.size() - 1));
+                                    col.append(" = ?");
+                                } else {
+//                                    col = columns.get(0) + " = ?";
+                                    col.append(columns.get(0));
+                                    col.append(" = ?");
+                                }
+                                Cursor cursor;
+                                cursor = mDatabaseHelper.queryItemData("Payment", col.toString(), condition.toArray(new String[condition.size()]));
+                                if (cursor != null) {
+                                    while (cursor.moveToNext()) {
+                                        ItemBean itemBean = new ItemBean();
+                                        itemBean.setItemId(cursor.getString(cursor.getColumnIndex("id")));
+                                        itemBean.setItemType(cursor.getString(cursor.getColumnIndex("type")));
+                                        itemBean.setItemNote(cursor.getString(cursor.getColumnIndex("note")));
+                                        itemBean.setItemDate(cursor.getString(cursor.getColumnIndex("date")));
+                                        itemBean.setItemMoney(cursor.getString(cursor.getColumnIndex("money")));
+                                        itemBean.setItemCategory("Payment");
+                                        mQueryList.add(itemBean);
+                                    }
+                                    cursor.close();
+                                }
+                                cursor = mDatabaseHelper.queryItemData("Income", col.toString(), condition.toArray(new String[condition.size()]));
+                                if (cursor != null) {
+                                    while (cursor.moveToNext()) {
+                                        ItemBean itemBean = new ItemBean();
+                                        itemBean.setItemId(cursor.getString(cursor.getColumnIndex("id")));
+                                        itemBean.setItemType(cursor.getString(cursor.getColumnIndex("type")));
+                                        itemBean.setItemNote(cursor.getString(cursor.getColumnIndex("note")));
+                                        itemBean.setItemDate(cursor.getString(cursor.getColumnIndex("date")));
+                                        itemBean.setItemMoney(cursor.getString(cursor.getColumnIndex("money")));
+                                        itemBean.setItemCategory("Income");
+                                        mQueryList.add(itemBean);
+                                    }
+                                    cursor.close();
+                                }
+                            } else {    //不设置任何限定条件时候，查询所有数据
+                                getItemData("Payment", mQueryList);
+                                getItemData("Income", mQueryList);
+                            }
+
+                            //因为同时查询了两个类别的数据（即收入表和支出表），所以对查询结果按时间进行排序
+                            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+                                //Java8中支持的Lambda排序
+                                mQueryList.sort((ItemBean i1, ItemBean i2) -> i1.getItemDate().compareTo(i2.getItemDate()));
+                            } else {
+                                //不支持Java8的环境下使用，传统的新建匿名内部类排序
+                                new Comparator<ItemBean>() {
+                                    @Override
+                                    public int compare(ItemBean i1, ItemBean i2) {
+                                        return i1.getItemDate().compareTo(i2.getItemDate());
+                                    }
+                                };
+
+                                Collections.sort(mQueryList, new Comparator<ItemBean>() {
+                                    @Override
+                                    public int compare(ItemBean o1, ItemBean o2) {
+                                        return o1.getItemDate().compareTo(o2.getItemDate());
+                                    }
+                                });
+                            }
+
+                        }
+
+                        Intent intent = new Intent(MainActivity.this, QueryActivity.class);
+                        intent.putExtra("item_list", (Serializable) mQueryList);
+                        mDatabaseHelper.close();
+                        startActivity(intent);
+
+//                        Toast.makeText(MainActivity.this, Boolean.toString(switchMoney.isChecked()), Toast.LENGTH_LONG).show();
+                    }
+                });
+
+                builderQuery.setNegativeButton("取消", null);
+
+                builderQuery.create().show();
             }
         });
+
+    }
+
+
+    /**
+     * 重写onRestart函数，使得能够刷新账目列表
+     */
+//    @Override
+//    protected void onRestart() {
+//        super.onRestart();
+//
+//        //刷新账目列表
+//        initItemData();
+//        mAdapter = new ItemListAdapter(this, mItemBeanList);
+////        mAdapter.notifyDataSetChanged();
+////
+////        itemList.setAdapter(mAdapter);
+//    }
+    private void getItemData(String table, List<ItemBean> list) {
+        Cursor cursor = mDatabaseHelper.getAllItemData(table);
+        if (cursor != null) {
+            while (cursor.moveToNext()) {
+                ItemBean itemBean = new ItemBean();
+                itemBean.setItemId(cursor.getString(cursor.getColumnIndex("id")));
+                itemBean.setItemType(cursor.getString(cursor.getColumnIndex("type")));
+                itemBean.setItemNote(cursor.getString(cursor.getColumnIndex("note")));
+                itemBean.setItemDate(cursor.getString(cursor.getColumnIndex("date")));
+                itemBean.setItemMoney(cursor.getString(cursor.getColumnIndex("money")));
+                itemBean.setItemCategory(table);
+                list.add(itemBean);
+            }
+            cursor.close();
+        }
     }
 
     private void initItemData() {
@@ -493,34 +828,37 @@ public class MainActivity extends AppCompatActivity {
 //            itemBean.setItemMoney("15");
 //            mDatabaseHelper.insertItem(itemBean,"Income");
 //        }
-        Cursor cursor = mDatabaseHelper.getAllItemData("Payment");
-        if (cursor != null) {
-            while (cursor.moveToNext()) {
-                ItemBean itemBean = new ItemBean();
-                itemBean.setItemId(cursor.getString(cursor.getColumnIndex("id")));
-                itemBean.setItemType(cursor.getString(cursor.getColumnIndex("type")));
-                itemBean.setItemNote(cursor.getString(cursor.getColumnIndex("note")));
-                itemBean.setItemDate(cursor.getString(cursor.getColumnIndex("date")));
-                itemBean.setItemMoney(cursor.getString(cursor.getColumnIndex("money")));
-                itemBean.setItemCategory("Payment");
-                mItemBeanList.add(itemBean);
-            }
-            cursor.close();
-        }
-        cursor = mDatabaseHelper.getAllItemData("Income");
-        if (cursor != null) {
-            while (cursor.moveToNext()) {
-                ItemBean itemBean = new ItemBean();
-                itemBean.setItemId(cursor.getString(cursor.getColumnIndex("id")));
-                itemBean.setItemType(cursor.getString(cursor.getColumnIndex("type")));
-                itemBean.setItemNote(cursor.getString(cursor.getColumnIndex("note")));
-                itemBean.setItemDate(cursor.getString(cursor.getColumnIndex("date")));
-                itemBean.setItemMoney(cursor.getString(cursor.getColumnIndex("money")));
-                itemBean.setItemCategory("Income");
-                mItemBeanList.add(itemBean);
-            }
-            cursor.close();
-        }
+//        mItemBeanList.clear();
+//        Cursor cursor = mDatabaseHelper.getAllItemData("Payment");
+//        if (cursor != null) {
+//            while (cursor.moveToNext()) {
+//                ItemBean itemBean = new ItemBean();
+//                itemBean.setItemId(cursor.getString(cursor.getColumnIndex("id")));
+//                itemBean.setItemType(cursor.getString(cursor.getColumnIndex("type")));
+//                itemBean.setItemNote(cursor.getString(cursor.getColumnIndex("note")));
+//                itemBean.setItemDate(cursor.getString(cursor.getColumnIndex("date")));
+//                itemBean.setItemMoney(cursor.getString(cursor.getColumnIndex("money")));
+//                itemBean.setItemCategory("Payment");
+//                mItemBeanList.add(itemBean);
+//            }
+//            cursor.close();
+//        }
+//        cursor = mDatabaseHelper.getAllItemData("Income");
+//        if (cursor != null) {
+//            while (cursor.moveToNext()) {
+//                ItemBean itemBean = new ItemBean();
+//                itemBean.setItemId(cursor.getString(cursor.getColumnIndex("id")));
+//                itemBean.setItemType(cursor.getString(cursor.getColumnIndex("type")));
+//                itemBean.setItemNote(cursor.getString(cursor.getColumnIndex("note")));
+//                itemBean.setItemDate(cursor.getString(cursor.getColumnIndex("date")));
+//                itemBean.setItemMoney(cursor.getString(cursor.getColumnIndex("money")));
+//                itemBean.setItemCategory("Income");
+//                mItemBeanList.add(itemBean);
+//            }
+//            cursor.close();
+//        }
+        getItemData("Payment", mItemBeanList);
+        getItemData("Income", mItemBeanList);
         //排序对数据按照时间排序
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
             //Java8中支持的Lambda排序
@@ -625,7 +963,7 @@ public class MainActivity extends AppCompatActivity {
                     public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
                         AlertDialog.Builder updateTypeBuilder = new AlertDialog.Builder(MainActivity.this);
                         LayoutInflater updateTypeInflate = LayoutInflater.from(MainActivity.this);
-                        View updateTypeView = updateTypeInflate.inflate(R.layout.manage_type, null);
+                        View updateTypeView = updateTypeInflate.inflate(R.layout.manage_type, parent, false);
                         TextView text = updateTypeView.findViewById(R.id.textView_add_type);
                         EditText updateType = updateTypeView.findViewById(R.id.edit_manageType);
                         updateTypeView.findViewById(R.id.list_view_type).setVisibility(View.GONE);
@@ -643,6 +981,10 @@ public class MainActivity extends AppCompatActivity {
                                     } else {
                                         update.setTypeName(updateType.getText().toString());
                                         mDatabaseHelper.updateType(update, "Type" + category);
+
+                                        //将list中的对应项也同步更新
+                                        mTypeString.set(position, update.getTypeName());
+                                        mTypeList.set(position, update);
 //                                                setTypeList(updateItem.getItemCategory());
                                         //刷新列表
                                         listAdapter.notifyDataSetChanged();
@@ -704,7 +1046,11 @@ public class MainActivity extends AppCompatActivity {
         int id = item.getItemId();
 
         //noinspection SimplifiableIfStatement
-        if (id == R.id.action_settings) {
+        if (id == R.id.action_charts) {
+            Intent intent = new Intent(MainActivity.this, QueryActivity.class);
+            intent.putExtra("item_list", (Serializable) mItemBeanList);
+            mDatabaseHelper.close();
+            startActivity(intent);
             return true;
         }
 
