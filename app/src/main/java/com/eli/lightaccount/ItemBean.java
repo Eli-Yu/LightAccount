@@ -1,6 +1,11 @@
 package com.eli.lightaccount;
 
-public class ItemBean {
+import java.io.Serializable;
+
+/**
+ * 账目项类，可以序列化，以便能够通过intent传递
+ */
+public class ItemBean implements Serializable {
 
     private String  itemId;
     private String itemType;
