@@ -1,17 +1,24 @@
 package com.eli.lightaccount;
 
+import android.Manifest;
+import android.app.Activity;
+import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
+import android.content.pm.PackageManager;
 import android.database.Cursor;
 import android.os.Build;
 import android.os.Bundle;
-import android.provider.FontsContract;
+import android.os.CountDownTimer;
+import android.os.Environment;
+import android.os.storage.StorageManager;
 import android.support.design.widget.FloatingActionButton;
 import android.support.design.widget.Snackbar;
+import android.support.v4.app.ActivityCompat;
+import android.support.v4.content.ContextCompat;
 import android.support.v7.app.AlertDialog;
 import android.support.v7.app.AppCompatActivity;
 import android.support.v7.widget.Toolbar;
-import android.text.BoringLayout;
 import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -30,12 +37,24 @@ import android.widget.Switch;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import java.io.BufferedInputStream;
+import java.io.BufferedReader;
+import java.io.BufferedWriter;
+import java.io.FileInputStream;
+import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.io.InputStreamReader;
+import java.io.OutputStreamWriter;
 import java.io.Serializable;
-import java.nio.charset.CoderMalfunctionError;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
+
+import javax.sql.RowSetEvent;
+
+// TODO: 2018/5/7 或许可以实现可折叠性标题栏 和 浮动按钮提示
 
 public class MainActivity extends AppCompatActivity {
 
@@ -46,12 +65,19 @@ public class MainActivity extends AppCompatActivity {
     private ItemListAdapter mAdapter;
     private String itemCategory = "Payment";
 
+    //存储权限管理类
+    private StorageManager mStorageManager;
+    //授权请求码
+    private static final int PERMISSION_REQUEST_CODE = 24;
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
         Toolbar toolbar = (Toolbar) findViewById(R.id.toolbar);
         setSupportActionBar(toolbar);
+
+        // TODO: 2018/5/7 限定一次加载的账目数量，而不是加载所有数据，从而加快加载速度，可以添加下拉（上拉刷新功能）
 
         mDatabaseHelper = new DataBaseHelper(this);
         mItemBeanList = new ArrayList<>();
@@ -771,6 +797,8 @@ public class MainActivity extends AppCompatActivity {
 
                         }
 
+                        // TODO: 2018/5/7 解决两个activity之间ListView数据同步问题
+
                         Intent intent = new Intent(MainActivity.this, QueryActivity.class);
                         intent.putExtra("item_list", (Serializable) mQueryList);
                         mDatabaseHelper.close();
@@ -789,6 +817,8 @@ public class MainActivity extends AppCompatActivity {
     }
 
 
+    // TODO: 2018/5/7 实现数据同步的关键
+
     /**
      * 重写onRestart函数，使得能够刷新账目列表
      */
@@ -803,8 +833,255 @@ public class MainActivity extends AppCompatActivity {
 ////
 ////        itemList.setAdapter(mAdapter);
 //    }
+//    @Override
+    public void onRequestPermissionsResult(int requestCode, String[] permissions[], int[] grantResults) {
+        switch (requestCode) {
+            case PERMISSION_REQUEST_CODE:
+                if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+                    Log.i("import", "grant success.");
+                    //授权成功
+                    importData();
+                } else {
+                    Toast.makeText(MainActivity.this, "没有权限", Toast.LENGTH_LONG).show();
+                }
+                break;
+            default:
+        }
+    }
+
+    public static int getPermissionRequestCode() {
+        return PERMISSION_REQUEST_CODE;
+    }
+
+    /**
+     * 数据导入方法
+     */
+    private void importData() {
+        FileInputStream in = null;
+        BufferedReader reader = null;
+        StringBuilder row = new StringBuilder();
+        Log.i("import", "start");
+        try {
+
+//            if (ActivityCompat.checkSelfPermission(this, Manifest.permission.WRITE_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED) {
+//                //没有授权，则请求授权
+//                ActivityCompat.requestPermissions(this, new String[]{Manifest.permission.WRITE_EXTERNAL_STORAGE}, PERMISSION_REQUEST_CODE);
+//            }
+
+            String filename = Environment.getExternalStorageDirectory().getCanonicalPath() + "/" + "import.csv";
+//            in = openFileInput("import.csv");
+            in = new FileInputStream(filename);
+            Log.i("import", "find it");
+            reader = new BufferedReader(new InputStreamReader(in));
+
+            List<String[]> data = new ArrayList<>();
+//            String[] singleData = new String[]{};
+            String line = "";
+            String table = "";
+            List<String> all = new ArrayList<>();
+            while ((line = reader.readLine()) != null) {
+                all.add(line);
+            }
+            in.close();
+            for (String str:all)
+                Log.i("import",str);
+//            for (int i = 0; i < all.size(); i++) {
+//                if (i == 0 ) {
+//                    table = all.get(0).substring(6);
+//                } else {
+//                    if ((!all.get(i).contains("Table")) || (all.get(i).contains("Table") && all.get(i).contains(","))) {
+//                        data.add(all.get(i).split(","));
+//                    }
+//                    else {
+//                        mDatabaseHelper.importData(table,);
+//                    }
+//                }
+//            }
+            //创建一个用于保存Table的index的数组
+            int[] index = new int[4];
+            int i = 0;
+            for (int j = 0; j < all.size() && i < 4; j++) {
+                if (all.get(j).contains("Table") && !all.get(j).contains(",")) {
+                    index[i++] = j;
+                }
+            }
+
+            for(int a: index)
+                Log.i("import",Integer.toString(a));
+
+            for (int j = 0; j < 3; j++) {
+                table = all.get(index[j]).substring(6);
+                String fields = all.get(index[j] + 1);
+                for (int k = index[j] + 2; k < index[j + 1]; k++) {
+                    data.add(all.get(k).split(","));
+                }
+                Log.i("im", table);
+                Log.i("im", fields);
+                for (String str[]: data)
+                    for(String s: str)
+                        Log.i("im",s);
+                mDatabaseHelper.importData(table, fields, data);
+                data.clear();
+            }
+            table = all.get(index[3]).substring(6);
+            String fields = all.get(index[3] + 1);
+            for (int k = index[3] + 2; k < all.size(); k++) {
+                data.add(all.get(k).split(","));
+            }
+
+            mDatabaseHelper.importData(table, fields, data);
+            Log.i("im", table);
+            Log.i("im", fields);
+            for (String str[]: data)
+                for(String s: str)
+                    Log.i("im",s);
+
+
+
+//            List<String> data = new ArrayList<>();
+//            String line = "";
+//            String table = "";
+//            List<String> all = new ArrayList<>();
+//            List<Integer> index = new ArrayList<>();
+//            int i = 0;
+//            while ((line = reader.readLine()) != null) {
+//                if (line.contains("Table") && !line.contains(",")) {
+//                    index.add(i);
+//                }
+//                i++;
+//
+//                all.add(line);
+//            }
+//            in.close();
+//
+//            for (int j = 0; j < index.size() - 1; j++) {
+//                table = all.get(index.get(j)).substring(6);
+//                String fields = all.get(index.get(j) + 1);
+//                for (int k = index.get(j) + 2; k < index.get(j + 1); k++) {
+//                    data.add(all.get(k));
+//                }
+//                mDatabaseHelper.importData(table, fields, data);
+//                data.clear();
+//            }
+//            table = all.get(index.get(index.size() - 1)).substring(6);
+//            String fields = all.get(index.get(index.size() - 1) + 1);
+//            for(int k = index.get(index.size() - 1) + 2; k < all.size(); k++) {
+//                data.add(all.get(k));
+//            }
+//            mDatabaseHelper.importData(table, fields, data);
+        } catch (FileNotFoundException e) {
+            Toast.makeText(MainActivity.this, "import.csv文件找不到", Toast.LENGTH_LONG).show();
+            e.printStackTrace();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
+    /**
+     * 数据导出方法
+     *
+     * @throws IOException
+     */
+    private void exportData() throws IOException {
+        FileOutputStream out = null;
+        BufferedWriter writer = null;
+        StringBuffer row = new StringBuffer();
+        try {
+            out = openFileOutput("export.csv", Context.MODE_PRIVATE);
+            writer = new BufferedWriter(new OutputStreamWriter(out));
+            Cursor cursor = mDatabaseHelper.getAllItemData("Payment");
+            if (cursor != null) {
+                row.append("Table Payment\n");
+                row.append("id, ");
+                row.append("type, ");
+                row.append("date,  ");
+                row.append("money, ");
+                row.append("note\n");
+                while (cursor.moveToNext()) {
+                    row.append(cursor.getString(cursor.getColumnIndex("id")));
+                    row.append(",");
+                    row.append(cursor.getString(cursor.getColumnIndex("type")));
+                    row.append(",");
+                    row.append(cursor.getString(cursor.getColumnIndex("date")));
+                    row.append(",");
+                    row.append(cursor.getString(cursor.getColumnIndex("money")));
+                    row.append(",");
+                    row.append(cursor.getString(cursor.getColumnIndex("note")));
+                    row.append("\n");
+                }
+                cursor.close();
+            }
+            cursor = mDatabaseHelper.getAllItemData("Income");
+            if (cursor != null) {
+                row.append("Table Income\n");
+                row.append("id, ");
+                row.append("type, ");
+                row.append("date,  ");
+                row.append("money, ");
+                row.append("note\n");
+                while (cursor.moveToNext()) {
+                    row.append(cursor.getString(cursor.getColumnIndex("id")));
+                    row.append(",");
+                    row.append(cursor.getString(cursor.getColumnIndex("type")));
+                    row.append(",");
+                    row.append(cursor.getString(cursor.getColumnIndex("date")));
+                    row.append(",");
+                    row.append(cursor.getString(cursor.getColumnIndex("money")));
+                    row.append(",");
+                    row.append(cursor.getString(cursor.getColumnIndex("note")));
+                    row.append("\n");
+                }
+                cursor.close();
+            }
+            cursor = mDatabaseHelper.getAllTypeData("TypePayment");
+            if (cursor != null) {
+                row.append("Table TypePayment\n");
+                row.append("id, ");
+                row.append("name\n");
+                while (cursor.moveToNext()) {
+                    if (cursor.getColumnIndex("id") > DataBaseHelper.getTypePaymentLength()) {
+                        row.append(cursor.getString(cursor.getColumnIndex("id")));
+                        row.append(",");
+                        row.append(cursor.getString(cursor.getColumnIndex("name")));
+                        row.append("\n");
+                    }
+                }
+                cursor.close();
+            }
+            cursor = mDatabaseHelper.getAllTypeData("TypeIncome");
+            if (cursor != null) {
+                row.append("Table TypeIncome\n");
+                row.append("id, ");
+                row.append("name\n");
+                while (cursor.moveToNext()) {
+                    if (cursor.getColumnIndex("id") > DataBaseHelper.getTypeIncomeLength()) {
+                        row.append(cursor.getString(cursor.getColumnIndex("id")));
+                        row.append(",");
+                        row.append(cursor.getString(cursor.getColumnIndex("name")));
+                        row.append("\n");
+                    }
+                }
+                cursor.close();
+            }
+            writer.write(row.toString());
+        } catch (FileNotFoundException e) {
+            e.printStackTrace();
+        } finally {
+            try {
+                if (writer != null) {
+                    writer.close();
+                }
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }
+    }
+
+
     private void getItemData(String table, List<ItemBean> list) {
         Cursor cursor = mDatabaseHelper.getAllItemData(table);
+
+        // TODO: 2018/5/7 可以吧这里提出出来作为单独函数处理，进一步提高代码的可重用性
         if (cursor != null) {
             while (cursor.moveToNext()) {
                 ItemBean itemBean = new ItemBean();
@@ -1051,6 +1328,26 @@ public class MainActivity extends AppCompatActivity {
             intent.putExtra("item_list", (Serializable) mItemBeanList);
             mDatabaseHelper.close();
             startActivity(intent);
+            return true;
+        }
+        if (id == R.id.action_export) {
+            try {
+                exportData();
+                Toast.makeText(MainActivity.this, "export success", Toast.LENGTH_LONG).show();
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+            return true;
+        }
+        if (id == R.id.action_import) {
+            if (ContextCompat.checkSelfPermission(this, Manifest.permission.WRITE_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED) {
+                //没有授权，则请求授权
+                ActivityCompat.requestPermissions(this, new String[]{Manifest.permission.WRITE_EXTERNAL_STORAGE}, PERMISSION_REQUEST_CODE);
+            } else {
+                //已经授权时候
+                importData();
+            }
+            Toast.makeText(MainActivity.this, "import success", Toast.LENGTH_SHORT).show();
             return true;
         }
 

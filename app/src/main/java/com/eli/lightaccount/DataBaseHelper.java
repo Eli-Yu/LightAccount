@@ -5,6 +5,7 @@ import android.content.Context;
 import android.database.Cursor;
 import android.database.sqlite.SQLiteDatabase;
 import android.database.sqlite.SQLiteOpenHelper;
+import android.util.Log;
 import android.widget.Toast;
 
 import java.util.ArrayList;
@@ -12,6 +13,22 @@ import java.util.List;
 
 
 public class DataBaseHelper extends SQLiteOpenHelper {
+
+    /**
+     * 获取默认支付类型的数量
+     * @return 支付类型的数量
+     */
+    public static int getTypePaymentLength() {
+        return typePayment.length;
+    }
+
+    /**
+     * 获取默认收入类型的数量
+     * @return 收入类型的数量
+     */
+    public static int getTypeIncomeLength() {
+        return typeIncome.length;
+    }
 
     private static final String[] typePayment = new String[]{"三餐","饮料","水果","零食","买菜","交通","电影",
             "游戏","演出","学习","数码","运动","医疗","住房","维修",
@@ -69,6 +86,13 @@ public class DataBaseHelper extends SQLiteOpenHelper {
             Toast.makeText(mContext,"创建数据库失败",Toast.LENGTH_LONG).show();
         }
     }
+
+
+    @Override
+    public void onUpgrade(SQLiteDatabase db, int oldVersion, int newVersion) {
+
+    }
+
 
     //增加账目
     public void insertItem(ItemBean itemBean, String table) {
@@ -155,15 +179,82 @@ public class DataBaseHelper extends SQLiteOpenHelper {
         return database.query(table,null, col, condition,null,null,"date ASC");
     }
 
+    /**
+     * 查询账目数据
+     * @param table 表名
+     * @param columns 查询条件表达式
+     * @param condition 查询条件具体的值
+     * @return 包含查询结果的Cursor游标
+     */
     public Cursor queryItemData(String table, String columns, String[] condition) {
         SQLiteDatabase database = getWritableDatabase();
         return database.query(table,null, columns, condition,null,null,"date ASC");
     }
 
-    @Override
-    public void onUpgrade(SQLiteDatabase db, int oldVersion, int newVersion) {
-
+    /**
+     * 导入数据方法
+     * @param table 导入数据的表名
+     * @param fields 导入数据的字段名
+     * @param data 导入数据的数据内容
+     */
+    public void importData(String table, String fields, List<String[]> data) {
+        SQLiteDatabase database = getWritableDatabase();
+        StringBuffer sql = new StringBuffer();
+        sql.append("insert into ");
+        sql.append(table);
+        sql.append("(");
+        sql.append(fields);
+        sql.append(") values(");
+        for(int i = 0; i < fields.split(",").length - 1; i++) {
+            sql.append("?, ");
+        }
+        sql.append("?)");
+        for (String[] d: data) {
+            Log.i("add",sql.toString());
+            for (String str: d)
+                Log.i("add", str);
+            Log.i("add","NEXT");
+            database.execSQL(sql.toString(), d);
+        }
     }
+
+    /**
+     * 导入数据方法
+     * @param table 导入数据的表名
+     * @param fields 导入数据的字段名
+     * @param data 导入数据的数据内容
+     */
+//    public void importData(String table, String fields, List<String> data) {
+//        SQLiteDatabase database = getWritableDatabase();
+//        StringBuffer sql = new StringBuffer();
+//
+////        for(int i = 0; i < fields.split(",").length - 1; i++) {
+////            sql.append("?, ");
+////        }
+////        sql.append("?)");
+//        for (String d: data) {
+////            String test = sql.toString();
+////            database.execSQL("insert into Payment(id, type, date,  money, note) values(?, ?, ?, ?, ?)", d);
+//
+//            sql.append("insert into ");
+//            sql.append(table);
+//            sql.append("(");
+//            sql.append(fields);
+//            sql.append(") values(");
+//            String[] strings = d.split(",");
+//            for(String s: strings) {
+//                sql.append("\'");
+//                sql.append(s);
+//                sql.append("\',");
+//            }
+//            sql.deleteCharAt(sql.length() - 1);
+//            sql.append(")");
+////            Log.i("add",sql.toString());
+////            Log.i("add","NEXT");
+//            database.execSQL(sql.toString());
+//            sql.delete(0,sql.length());
+//        }
+//    }
 
     /**
      * 初始化TypePayment数据库
