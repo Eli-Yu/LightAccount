@@ -1,6 +1,6 @@
 <resources>
     <string name="app_name">轻记账</string>
-    <string name="action_settings">消费趋势</string>
+    <string name="action_charts">消费趋势</string>
     <string name="action_export">数据导出</string>
     <string name="action_import">数据导入</string>
     <string name="textView_type_name">类型</string>
@@ -10,4 +10,5 @@
     <string name="editText_money">金额</string>
     <string name="editText_note">备注</string>
     <string name="selectType">选择类型</string>
+    <string name="query_name">查询结果</string>
 </resources>
