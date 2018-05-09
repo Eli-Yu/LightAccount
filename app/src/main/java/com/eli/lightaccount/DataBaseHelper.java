@@ -155,7 +155,7 @@ public class DataBaseHelper extends SQLiteOpenHelper {
     //获取所有账目数据
     public Cursor getAllItemData(String table) {
         SQLiteDatabase database = getWritableDatabase();
-        return database.query(table,null,null,null,null,null,"date ASC");
+        return database.query(table,null,null,null,null,null,"date DESC");
     }
 
     //获取所有类型数据
@@ -176,7 +176,7 @@ public class DataBaseHelper extends SQLiteOpenHelper {
                 col = col + allCol[i] + "=? ";
                 if (--sum > 0) col += "and ";
             }
-        return database.query(table,null, col, condition,null,null,"date ASC");
+        return database.query(table,null, col, condition,null,null,"date DESC");
     }
 
     /**
@@ -188,7 +188,7 @@ public class DataBaseHelper extends SQLiteOpenHelper {
      */
     public Cursor queryItemData(String table, String columns, String[] condition) {
         SQLiteDatabase database = getWritableDatabase();
-        return database.query(table,null, columns, condition,null,null,"date ASC");
+        return database.query(table,null, columns, condition,null,null,"date DESC");
     }
 
     /**
