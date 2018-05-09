@@ -40,6 +40,7 @@ import android.widget.Toast;
 import java.io.BufferedInputStream;
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
+import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
@@ -65,6 +66,8 @@ public class MainActivity extends AppCompatActivity {
     private ItemListAdapter mAdapter;
     private String itemCategory = "Payment";
 
+    private String appDir = new String();
+
     //存储权限管理类
     private StorageManager mStorageManager;
     //授权请求码
@@ -76,6 +79,17 @@ public class MainActivity extends AppCompatActivity {
         setContentView(R.layout.activity_main);
         Toolbar toolbar = (Toolbar) findViewById(R.id.toolbar);
         setSupportActionBar(toolbar);
+
+        //检测是否有外部存储的写权限，若没有则请求获取
+        if (ContextCompat.checkSelfPermission(this, Manifest.permission.WRITE_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED) {
+
+            //没有授权，则请求授权
+            ActivityCompat.requestPermissions(this, new String[]{Manifest.permission.WRITE_EXTERNAL_STORAGE}, PERMISSION_REQUEST_CODE);
+        } else {
+            //已经授权时候,创建应用文件夹，用于存放导入导出的csv文件
+            createAppDir();
+        }
+
 
         // TODO: 2018/5/7 限定一次加载的账目数量，而不是加载所有数据，从而加快加载速度，可以添加下拉（上拉刷新功能）
 
@@ -853,6 +867,25 @@ public class MainActivity extends AppCompatActivity {
         return PERMISSION_REQUEST_CODE;
     }
 
+
+    private void createAppDir() {
+        try {
+            appDir = Environment.getExternalStorageDirectory().getCanonicalFile() + "/LightAccount";
+            File test = new File(appDir);
+            if (!test.exists()) {
+                boolean isSuccess = test.mkdirs();
+                if (isSuccess) {
+                    Toast.makeText(MainActivity.this,"创建成功",Toast.LENGTH_LONG).show();
+                } else {
+                    Toast.makeText(MainActivity.this, "创建失败，没有写入外部存储的权限，请赋予权限",Toast.LENGTH_LONG).show();
+                }
+            }
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
+
     /**
      * 数据导入方法
      */
@@ -862,13 +895,7 @@ public class MainActivity extends AppCompatActivity {
         StringBuilder row = new StringBuilder();
         Log.i("import", "start");
         try {
-
-//            if (ActivityCompat.checkSelfPermission(this, Manifest.permission.WRITE_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED) {
-//                //没有授权，则请求授权
-//                ActivityCompat.requestPermissions(this, new String[]{Manifest.permission.WRITE_EXTERNAL_STORAGE}, PERMISSION_REQUEST_CODE);
-//            }
-
-            String filename = Environment.getExternalStorageDirectory().getCanonicalPath() + "/" + "import.csv";
+            String filename = appDir + "/" + "import.csv";
 //            in = openFileInput("import.csv");
             in = new FileInputStream(filename);
             Log.i("import", "find it");
@@ -920,8 +947,13 @@ public class MainActivity extends AppCompatActivity {
                 for (String str[]: data)
                     for(String s: str)
                         Log.i("im",s);
-                mDatabaseHelper.importData(table, fields, data);
-                data.clear();
+                try {
+                    mDatabaseHelper.importData(table, fields, data);
+                    data.clear();
+                } catch (Exception e) {
+                    Toast.makeText(MainActivity.this, "导入失败，可能存在重复记录。", Toast.LENGTH_SHORT).show();
+                    e.printStackTrace();
+                }
             }
             table = all.get(index[3]).substring(6);
             String fields = all.get(index[3] + 1);
@@ -929,15 +961,21 @@ public class MainActivity extends AppCompatActivity {
                 data.add(all.get(k).split(","));
             }
 
-            mDatabaseHelper.importData(table, fields, data);
+            try {
+                mDatabaseHelper.importData(table, fields, data);
+                Toast.makeText(MainActivity.this, "导入成功。", Toast.LENGTH_SHORT).show();
+            } catch (Exception e) {
+                Toast.makeText(MainActivity.this, "导入失败，可能存在重复记录。", Toast.LENGTH_SHORT).show();
+                e.printStackTrace();
+            }
+
+            // TODO: 2018/5/9 可以考虑实现导入成功后数据刷新
+
             Log.i("im", table);
             Log.i("im", fields);
             for (String str[]: data)
                 for(String s: str)
                     Log.i("im",s);
-
-
-
 //            List<String> data = new ArrayList<>();
 //            String line = "";
 //            String table = "";
@@ -970,9 +1008,12 @@ public class MainActivity extends AppCompatActivity {
 //            }
 //            mDatabaseHelper.importData(table, fields, data);
         } catch (FileNotFoundException e) {
+            Log.i("error","文件找不到");
             Toast.makeText(MainActivity.this, "import.csv文件找不到", Toast.LENGTH_LONG).show();
             e.printStackTrace();
         } catch (IOException e) {
+            Log.i("error","路径访问失败，请授权");
+            Toast.makeText(MainActivity.this, "路径访问失败，请授予文件读写权限", Toast.LENGTH_LONG).show();
             e.printStackTrace();
         }
     }
@@ -987,7 +1028,10 @@ public class MainActivity extends AppCompatActivity {
         BufferedWriter writer = null;
         StringBuffer row = new StringBuffer();
         try {
-            out = openFileOutput("export.csv", Context.MODE_PRIVATE);
+//            String filename = Environment.getExternalStorageDirectory().getCanonicalPath() + "/" + "import.csv";
+            String filename = appDir + "/export.csv";
+//            out = openFileOutput("export.csv", Context.MODE_PRIVATE);
+            out = new FileOutputStream(filename);
             writer = new BufferedWriter(new OutputStreamWriter(out));
             Cursor cursor = mDatabaseHelper.getAllItemData("Payment");
             if (cursor != null) {
@@ -1070,6 +1114,7 @@ public class MainActivity extends AppCompatActivity {
             try {
                 if (writer != null) {
                     writer.close();
+                    Toast.makeText(MainActivity.this, "导出成功。", Toast.LENGTH_LONG).show();
                 }
             } catch (IOException e) {
                 e.printStackTrace();
@@ -1324,30 +1369,50 @@ public class MainActivity extends AppCompatActivity {
 
         //noinspection SimplifiableIfStatement
         if (id == R.id.action_charts) {
-            Intent intent = new Intent(MainActivity.this, QueryActivity.class);
-            intent.putExtra("item_list", (Serializable) mItemBeanList);
-            mDatabaseHelper.close();
-            startActivity(intent);
+
+            try {
+                File test = new File(Environment.getExternalStorageDirectory().getCanonicalFile() + "/LightAccount");
+                if (!test.exists()) {
+                    boolean isSuccess = test.mkdirs();
+                    Toast.makeText(MainActivity.this,"创建成功="+Boolean.toString(isSuccess),Toast.LENGTH_LONG).show();
+                }
+            } catch (IOException e) {
+                Toast.makeText(MainActivity.this, "没有写入外部存储的权限，请赋予权限",Toast.LENGTH_LONG).show();
+                e.printStackTrace();
+            }
+//            Intent intent = new Intent(MainActivity.this, QueryActivity.class);
+//            intent.putExtra("item_list", (Serializable) mItemBeanList);
+//            mDatabaseHelper.close();
+//            startActivity(intent);
             return true;
         }
         if (id == R.id.action_export) {
-            try {
-                exportData();
-                Toast.makeText(MainActivity.this, "export success", Toast.LENGTH_LONG).show();
-            } catch (IOException e) {
-                e.printStackTrace();
-            }
-            return true;
-        }
-        if (id == R.id.action_import) {
+            //检测是否有外部存储的写权限，若没有则请求获取
             if (ContextCompat.checkSelfPermission(this, Manifest.permission.WRITE_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED) {
+
                 //没有授权，则请求授权
                 ActivityCompat.requestPermissions(this, new String[]{Manifest.permission.WRITE_EXTERNAL_STORAGE}, PERMISSION_REQUEST_CODE);
             } else {
-                //已经授权时候
+                //已经授权时候,
+                try {
+                    exportData();
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+            }
+            return true;
+        }
+
+        if (id == R.id.action_import) {
+            //检测是否有外部存储的写权限，若没有则请求获取
+            if (ContextCompat.checkSelfPermission(this, Manifest.permission.WRITE_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED) {
+
+                //没有授权，则请求授权
+                ActivityCompat.requestPermissions(this, new String[]{Manifest.permission.WRITE_EXTERNAL_STORAGE}, PERMISSION_REQUEST_CODE);
+            } else {
+                //已经授权时候,
                 importData();
             }
-            Toast.makeText(MainActivity.this, "import success", Toast.LENGTH_SHORT).show();
             return true;
         }
 
