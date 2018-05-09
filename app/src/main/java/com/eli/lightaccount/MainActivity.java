@@ -791,13 +791,13 @@ public class MainActivity extends AppCompatActivity {
                             //因为同时查询了两个类别的数据（即收入表和支出表），所以对查询结果按时间进行排序
                             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
                                 //Java8中支持的Lambda排序
-                                mQueryList.sort((ItemBean i1, ItemBean i2) -> i1.getItemDate().compareTo(i2.getItemDate()));
+                                mQueryList.sort((ItemBean i1, ItemBean i2) -> i2.getItemDate().compareTo(i1.getItemDate()));
                             } else {
                                 //不支持Java8的环境下使用，传统的新建匿名内部类排序
                                 new Comparator<ItemBean>() {
                                     @Override
                                     public int compare(ItemBean i1, ItemBean i2) {
-                                        return i1.getItemDate().compareTo(i2.getItemDate());
+                                        return i2.getItemDate().compareTo(i1.getItemDate());
                                     }
                                 };
 
@@ -811,7 +811,6 @@ public class MainActivity extends AppCompatActivity {
 
                         }
 
-                        // TODO: 2018/5/7 解决两个activity之间ListView数据同步问题
 
                         Intent intent = new Intent(MainActivity.this, QueryActivity.class);
                         intent.putExtra("item_list", (Serializable) mQueryList);
@@ -831,22 +830,21 @@ public class MainActivity extends AppCompatActivity {
     }
 
 
-    // TODO: 2018/5/7 实现数据同步的关键
+    // TODO: 2018/5/7 实现数据同步的关键，现在为重新从数据库加载数据，耗时大，可考虑优化
 
     /**
      * 重写onRestart函数，使得能够刷新账目列表
      */
-//    @Override
-//    protected void onRestart() {
-//        super.onRestart();
-//
-//        //刷新账目列表
-//        initItemData();
-//        mAdapter = new ItemListAdapter(this, mItemBeanList);
-////        mAdapter.notifyDataSetChanged();
-////
-////        itemList.setAdapter(mAdapter);
-//    }
+    @Override
+    protected void onRestart() {
+        super.onRestart();
+
+        //刷新账目列表
+        initItemData();
+        mAdapter.notifyDataSetChanged();
+    }
+
+
 //    @Override
     public void onRequestPermissionsResult(int requestCode, String[] permissions[], int[] grantResults) {
         switch (requestCode) {
@@ -950,6 +948,7 @@ public class MainActivity extends AppCompatActivity {
                 try {
                     mDatabaseHelper.importData(table, fields, data);
                     data.clear();
+                    Log.i("im","clear");
                 } catch (Exception e) {
                     Toast.makeText(MainActivity.this, "导入失败，可能存在重复记录。", Toast.LENGTH_SHORT).show();
                     e.printStackTrace();
@@ -963,13 +962,15 @@ public class MainActivity extends AppCompatActivity {
 
             try {
                 mDatabaseHelper.importData(table, fields, data);
+                //导入后重新加载数据
+                initItemData();
+                mAdapter.notifyDataSetChanged();
                 Toast.makeText(MainActivity.this, "导入成功。", Toast.LENGTH_SHORT).show();
             } catch (Exception e) {
                 Toast.makeText(MainActivity.this, "导入失败，可能存在重复记录。", Toast.LENGTH_SHORT).show();
                 e.printStackTrace();
             }
 
-            // TODO: 2018/5/9 可以考虑实现导入成功后数据刷新
 
             Log.i("im", table);
             Log.i("im", fields);
@@ -1179,25 +1180,29 @@ public class MainActivity extends AppCompatActivity {
 //            }
 //            cursor.close();
 //        }
+        if(!mItemBeanList.isEmpty()) {
+            //mItemBeanList不为空时候清空list
+            mItemBeanList.clear();
+        }
         getItemData("Payment", mItemBeanList);
         getItemData("Income", mItemBeanList);
         //排序对数据按照时间排序
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
             //Java8中支持的Lambda排序
-            mItemBeanList.sort((ItemBean i1, ItemBean i2) -> i1.getItemDate().compareTo(i2.getItemDate()));
+            mItemBeanList.sort((ItemBean i1, ItemBean i2) -> i2.getItemDate().compareTo(i1.getItemDate()));
         } else {
             //不支持Java8的环境下使用，传统的新建匿名内部类排序
             new Comparator<ItemBean>() {
                 @Override
                 public int compare(ItemBean i1, ItemBean i2) {
-                    return i1.getItemDate().compareTo(i2.getItemDate());
+                    return i2.getItemDate().compareTo(i1.getItemDate());
                 }
             };
 
             Collections.sort(mItemBeanList, new Comparator<ItemBean>() {
                 @Override
                 public int compare(ItemBean o1, ItemBean o2) {
-                    return o1.getItemDate().compareTo(o2.getItemDate());
+                    return o2.getItemDate().compareTo(o1.getItemDate());
                 }
             });
         }
