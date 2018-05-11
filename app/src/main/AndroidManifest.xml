@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     package="com.eli.lightaccount">
+
     <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" />
 
     <application
@@ -23,6 +24,11 @@
         <activity
             android:name=".QueryActivity"
             android:label="@string/query_name">
+
+        </activity>
+        <activity
+            android:name=".ChartActivity"
+            android:label="@string/action_charts">
 
         </activity>
     </application>
