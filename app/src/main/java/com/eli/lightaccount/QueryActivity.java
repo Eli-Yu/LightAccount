@@ -101,10 +101,13 @@ public class QueryActivity extends AppCompatActivity {
                     @Override
                     public void onClick(DialogInterface dialog, int which) {
                         if (!money.getText().toString().isEmpty() && Float.parseFloat(money.getText().toString()) > 0) {
+                            //满足条件更新数据
                             updateItem.setItemType(type.getSelectedItem().toString());
                             updateItem.setItemMoney(money.getText().toString());
                             updateItem.setItemNote(note.getText().toString());
-                            updateItem.setItemDate(date.getYear() + "-" + (date.getMonth() + 1) + "-" + date.getDayOfMonth());
+                            String month = date.getMonth() < 9 ? "0" + (date.getMonth() + 1) : Integer.toString(date.getMonth() + 1);
+                            String day = date.getDayOfMonth() < 10 ? "0" + date.getDayOfMonth(): Integer.toString(date.getDayOfMonth());
+                            updateItem.setItemDate(date.getYear() + "-" + month  + "-" + day);
                             mDatabaseHelper.updateItem(updateItem, updateItem.getItemCategory(), updateItem.getItemId());
                             //更新列表
                             mAdapter.notifyDataSetChanged();

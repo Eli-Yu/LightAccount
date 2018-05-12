@@ -48,9 +48,12 @@ import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.OutputStreamWriter;
 import java.io.Serializable;
+import java.text.DateFormat;
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
+import java.util.Date;
 import java.util.List;
 
 import javax.sql.RowSetEvent;
@@ -309,10 +312,13 @@ public class MainActivity extends AppCompatActivity {
                     public void onClick(DialogInterface dialog, int which) {
 
                         if (!money.getText().toString().isEmpty() && Float.parseFloat(money.getText().toString()) > 0) {
+                            //如果修改后金额不为空或零，更新数据
                             updateItem.setItemType(type.getSelectedItem().toString());
                             updateItem.setItemMoney(money.getText().toString());
                             updateItem.setItemNote(note.getText().toString());
-                            updateItem.setItemDate(date.getYear() + "-" + (date.getMonth() + 1) + "-" + date.getDayOfMonth());
+                            String month = date.getMonth() < 9 ? "0" + (date.getMonth() + 1) : Integer.toString(date.getMonth() + 1);
+                            String day = date.getDayOfMonth() < 10 ? "0" + date.getDayOfMonth(): Integer.toString(date.getDayOfMonth());
+                            updateItem.setItemDate(date.getYear() + "-" + month  + "-" + day);
                             mDatabaseHelper.updateItem(updateItem, updateItem.getItemCategory(), updateItem.getItemId());
                             //更新列表
                             mAdapter.notifyDataSetChanged();
@@ -487,7 +493,10 @@ public class MainActivity extends AppCompatActivity {
                         itemBean.setItemId(Long.toString(System.currentTimeMillis()));
                         itemBean.setItemMoney(money.getText().toString());
                         itemBean.setItemNote(note.getText().toString());
-                        itemBean.setItemDate(date.getYear() + "-" + (date.getMonth() + 1) + "-" + date.getDayOfMonth());
+                        //对日期进行处理，默认月份为0-11，改为1-12，同时把时间按YYYY-MM-dd的格式来存储
+                        String month = date.getMonth() < 9 ? "0" + (date.getMonth() + 1) : Integer.toString(date.getMonth() + 1);
+                        String day = date.getDayOfMonth() < 10 ? "0" + date.getDayOfMonth(): Integer.toString(date.getDayOfMonth());
+                        itemBean.setItemDate(date.getYear() + "-" + month  + "-" + day);
 
                         /// 检测金额是否为空，为空则取消操作
                         if (!itemBean.getItemMoney().isEmpty() && Float.parseFloat(money.getText().toString()) > 0) {
@@ -1031,6 +1040,7 @@ public class MainActivity extends AppCompatActivity {
         try {
 //            String filename = Environment.getExternalStorageDirectory().getCanonicalPath() + "/" + "import.csv";
             String filename = appDir + "/export.csv";
+            Log.i("dir",filename);
 //            out = openFileOutput("export.csv", Context.MODE_PRIVATE);
             out = new FileOutputStream(filename);
             writer = new BufferedWriter(new OutputStreamWriter(out));
@@ -1375,20 +1385,38 @@ public class MainActivity extends AppCompatActivity {
         //noinspection SimplifiableIfStatement
         if (id == R.id.action_charts) {
 
-            try {
-                File test = new File(Environment.getExternalStorageDirectory().getCanonicalFile() + "/LightAccount");
-                if (!test.exists()) {
-                    boolean isSuccess = test.mkdirs();
-                    Toast.makeText(MainActivity.this,"创建成功="+Boolean.toString(isSuccess),Toast.LENGTH_LONG).show();
+//            try {
+//                File test = new File(Environment.getExternalStorageDirectory().getCanonicalFile() + "/LightAccount");
+//                if (!test.exists()) {
+//                    boolean isSuccess = test.mkdirs();
+//                    Toast.makeText(MainActivity.this,"创建成功="+Boolean.toString(isSuccess),Toast.LENGTH_LONG).show();
+//                }
+//            } catch (IOException e) {
+//                Toast.makeText(MainActivity.this, "没有写入外部存储的权限，请赋予权限",Toast.LENGTH_LONG).show();
+//                e.printStackTrace();
+//            }
+            Intent intent = new Intent(MainActivity.this, QueryActivity.class);
+            Date currentDate = new Date();
+            DateFormat dateFormat = new SimpleDateFormat("YYYY-MM-dd");
+//            Toast.makeText(MainActivity.this, dateFormat.format(currentDate),Toast.LENGTH_LONG).show();
+            List<ItemBean> monthDataList = new ArrayList<>();
+            Cursor cursor = mDatabaseHelper.getMonthData("Payment", dateFormat.format(currentDate));
+            if (cursor != null) {
+                while (cursor.moveToNext()) {
+                    ItemBean itemBean = new ItemBean();
+                    itemBean.setItemId(cursor.getString(cursor.getColumnIndex("id")));
+                    itemBean.setItemType(cursor.getString(cursor.getColumnIndex("type")));
+                    itemBean.setItemMoney(cursor.getString(cursor.getColumnIndex("money")));
+                    itemBean.setItemNote(cursor.getString(cursor.getColumnIndex("note")));
+                    itemBean.setItemDate(cursor.getString(cursor.getColumnIndex("date")));
+                    itemBean.setItemCategory("Payment");
+                    monthDataList.add(itemBean);
                 }
-            } catch (IOException e) {
-                Toast.makeText(MainActivity.this, "没有写入外部存储的权限，请赋予权限",Toast.LENGTH_LONG).show();
-                e.printStackTrace();
+                cursor.close();
             }
-//            Intent intent = new Intent(MainActivity.this, QueryActivity.class);
-//            intent.putExtra("item_list", (Serializable) mItemBeanList);
-//            mDatabaseHelper.close();
-//            startActivity(intent);
+            intent.putExtra("item_list", (Serializable) monthDataList);
+            mDatabaseHelper.close();
+            startActivity(intent);
             return true;
         }
         if (id == R.id.action_export) {
