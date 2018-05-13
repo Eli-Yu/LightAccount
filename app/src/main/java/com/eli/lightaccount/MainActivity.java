@@ -55,6 +55,7 @@ import java.util.Collections;
 import java.util.Comparator;
 import java.util.Date;
 import java.util.List;
+import java.util.Locale;
 
 import javax.sql.RowSetEvent;
 
@@ -69,7 +70,7 @@ public class MainActivity extends AppCompatActivity {
     private ItemListAdapter mAdapter;
     private String itemCategory = "Payment";
 
-    private String appDir = new String();
+    private String appDir;
 
     //存储权限管理类
     private StorageManager mStorageManager;
@@ -82,6 +83,13 @@ public class MainActivity extends AppCompatActivity {
         setContentView(R.layout.activity_main);
         Toolbar toolbar = (Toolbar) findViewById(R.id.toolbar);
         setSupportActionBar(toolbar);
+
+        try {
+            appDir = Environment.getExternalStorageDirectory().getCanonicalFile() + "/LightAccount";
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+        Log.i("app",appDir);
 
         //检测是否有外部存储的写权限，若没有则请求获取
         if (ContextCompat.checkSelfPermission(this, Manifest.permission.WRITE_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED) {
@@ -876,19 +884,14 @@ public class MainActivity extends AppCompatActivity {
 
 
     private void createAppDir() {
-        try {
-            appDir = Environment.getExternalStorageDirectory().getCanonicalFile() + "/LightAccount";
-            File test = new File(appDir);
-            if (!test.exists()) {
-                boolean isSuccess = test.mkdirs();
-                if (isSuccess) {
-                    Toast.makeText(MainActivity.this,"创建成功",Toast.LENGTH_LONG).show();
-                } else {
-                    Toast.makeText(MainActivity.this, "创建失败，没有写入外部存储的权限，请赋予权限",Toast.LENGTH_LONG).show();
-                }
+        File test = new File(appDir);
+        if (!test.exists()) {
+            boolean isSuccess = test.mkdirs();
+            if (isSuccess) {
+                Toast.makeText(MainActivity.this,"创建成功",Toast.LENGTH_LONG).show();
+            } else {
+                Toast.makeText(MainActivity.this, "创建失败，没有写入外部存储的权限，请赋予权限",Toast.LENGTH_LONG).show();
             }
-        } catch (IOException e) {
-            e.printStackTrace();
         }
     }
 
@@ -913,40 +916,35 @@ public class MainActivity extends AppCompatActivity {
             String line = "";
             String table = "";
             List<String> all = new ArrayList<>();
+            List<Integer> index = new ArrayList<>();
+            int i = 0;
             while ((line = reader.readLine()) != null) {
+                if (line.contains("Table") && !line.contains(",")) {
+                    index.add(i);
+                }
+                i++;
+
                 all.add(line);
             }
             in.close();
             for (String str:all)
                 Log.i("import",str);
-//            for (int i = 0; i < all.size(); i++) {
-//                if (i == 0 ) {
-//                    table = all.get(0).substring(6);
-//                } else {
-//                    if ((!all.get(i).contains("Table")) || (all.get(i).contains("Table") && all.get(i).contains(","))) {
-//                        data.add(all.get(i).split(","));
-//                    }
-//                    else {
-//                        mDatabaseHelper.importData(table,);
-//                    }
+            //创建一个用于保存Table的index的数组
+//            int[] index = new int[4];
+//            int i = 0;
+//            for (int j = 0; j < all.size() && i < 4; j++) {
+//                if (all.get(j).contains("Table") && !all.get(j).contains(",")) {
+//                    index[i++] = j;
 //                }
 //            }
-            //创建一个用于保存Table的index的数组
-            int[] index = new int[4];
-            int i = 0;
-            for (int j = 0; j < all.size() && i < 4; j++) {
-                if (all.get(j).contains("Table") && !all.get(j).contains(",")) {
-                    index[i++] = j;
-                }
-            }
 
             for(int a: index)
                 Log.i("import",Integer.toString(a));
 
-            for (int j = 0; j < 3; j++) {
-                table = all.get(index[j]).substring(6);
-                String fields = all.get(index[j] + 1);
-                for (int k = index[j] + 2; k < index[j + 1]; k++) {
+            for (int j = 0; j < index.size() - 1; j++) {
+                table = all.get(index.get(j)).substring(6);
+                String fields = all.get(index.get(j) + 1);
+                for (int k = index.get(j) + 2; k < index.get(j + 1); k++) {
                     data.add(all.get(k).split(","));
                 }
                 Log.i("im", table);
@@ -959,15 +957,23 @@ public class MainActivity extends AppCompatActivity {
                     data.clear();
                     Log.i("im","clear");
                 } catch (Exception e) {
-                    Toast.makeText(MainActivity.this, "导入失败，可能存在重复记录。", Toast.LENGTH_SHORT).show();
+                    Toast.makeText(MainActivity.this, "导入失败，可能存在重复记录1。", Toast.LENGTH_SHORT).show();
+                    Log.i("failed",Integer.toString(j) + "不开心");
                     e.printStackTrace();
                 }
             }
-            table = all.get(index[3]).substring(6);
-            String fields = all.get(index[3] + 1);
-            for (int k = index[3] + 2; k < all.size(); k++) {
+//            data.clear();
+            table = all.get(index.get(index.size() - 1)).substring(6);
+            String fields = all.get(index.get(index.size() - 1) + 1);
+            for (int k = index.get(index.size() - 1) + 2; k < all.size(); k++) {
                 data.add(all.get(k).split(","));
             }
+
+            Log.i("im2", table);
+            Log.i("im2", fields);
+            for (String str[]: data)
+                for(String s: str)
+                    Log.i("im2",s);
 
             try {
                 mDatabaseHelper.importData(table, fields, data);
@@ -976,7 +982,7 @@ public class MainActivity extends AppCompatActivity {
                 mAdapter.notifyDataSetChanged();
                 Toast.makeText(MainActivity.this, "导入成功。", Toast.LENGTH_SHORT).show();
             } catch (Exception e) {
-                Toast.makeText(MainActivity.this, "导入失败，可能存在重复记录。", Toast.LENGTH_SHORT).show();
+                Toast.makeText(MainActivity.this, "导入失败，可能存在重复记录2。", Toast.LENGTH_SHORT).show();
                 e.printStackTrace();
             }
 
@@ -1385,40 +1391,24 @@ public class MainActivity extends AppCompatActivity {
         //noinspection SimplifiableIfStatement
         if (id == R.id.action_charts) {
 
-//            try {
-//                File test = new File(Environment.getExternalStorageDirectory().getCanonicalFile() + "/LightAccount");
-//                if (!test.exists()) {
-//                    boolean isSuccess = test.mkdirs();
-//                    Toast.makeText(MainActivity.this,"创建成功="+Boolean.toString(isSuccess),Toast.LENGTH_LONG).show();
-//                }
-//            } catch (IOException e) {
-//                Toast.makeText(MainActivity.this, "没有写入外部存储的权限，请赋予权限",Toast.LENGTH_LONG).show();
-//                e.printStackTrace();
-//            }
-            Intent intent = new Intent(MainActivity.this, QueryActivity.class);
-            Date currentDate = new Date();
-            DateFormat dateFormat = new SimpleDateFormat("YYYY-MM-dd");
-//            Toast.makeText(MainActivity.this, dateFormat.format(currentDate),Toast.LENGTH_LONG).show();
-            List<ItemBean> monthDataList = new ArrayList<>();
-            Cursor cursor = mDatabaseHelper.getMonthData("Payment", dateFormat.format(currentDate));
-            if (cursor != null) {
-                while (cursor.moveToNext()) {
-                    ItemBean itemBean = new ItemBean();
-                    itemBean.setItemId(cursor.getString(cursor.getColumnIndex("id")));
-                    itemBean.setItemType(cursor.getString(cursor.getColumnIndex("type")));
-                    itemBean.setItemMoney(cursor.getString(cursor.getColumnIndex("money")));
-                    itemBean.setItemNote(cursor.getString(cursor.getColumnIndex("note")));
-                    itemBean.setItemDate(cursor.getString(cursor.getColumnIndex("date")));
-                    itemBean.setItemCategory("Payment");
-                    monthDataList.add(itemBean);
-                }
-                cursor.close();
-            }
-            intent.putExtra("item_list", (Serializable) monthDataList);
-            mDatabaseHelper.close();
+            Intent intent = new Intent(MainActivity.this, ChartActivity.class);
+
+//            List<ItemBean> monthPaymentList = new ArrayList<>();
+//            List<ItemBean> monthIncomeList = new ArrayList<>();
+//            getMonthData("Payment");
+            //通过serializable的方式将当前月份的数据传递
+            intent.putExtra("payment_list", (Serializable) getMonthData("Payment"));
+            Log.i("data","paymentList");
+//            getMonthData("Income");
+            intent.putExtra("income_list", (Serializable) getMonthData("Income"));
+            Log.i("data", "incomeList");
+//            mDatabaseHelper.close();
             startActivity(intent);
             return true;
         }
+
+
+        //导出功能
         if (id == R.id.action_export) {
             //检测是否有外部存储的写权限，若没有则请求获取
             if (ContextCompat.checkSelfPermission(this, Manifest.permission.WRITE_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED) {
@@ -1436,6 +1426,8 @@ public class MainActivity extends AppCompatActivity {
             return true;
         }
 
+
+        //导入功能
         if (id == R.id.action_import) {
             //检测是否有外部存储的写权限，若没有则请求获取
             if (ContextCompat.checkSelfPermission(this, Manifest.permission.WRITE_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED) {
@@ -1450,5 +1442,37 @@ public class MainActivity extends AppCompatActivity {
         }
 
         return super.onOptionsItemSelected(item);
+    }
+
+    /**
+     * 获取当前月份的数据
+     * @param table 表名
+     * @return 包含当前月份数据的list
+     */
+    private List<ItemBean> getMonthData(String table) {
+
+        Date currentDate = new Date();
+        SimpleDateFormat simpleDateFormat = new SimpleDateFormat("yyyy-MM-dd", Locale.CHINA);
+//            Toast.makeText(MainActivity.this, dateFormat.format(currentDate),Toast.LENGTH_LONG).show();
+        Cursor cursor = mDatabaseHelper.getMonthData(table, simpleDateFormat.format(currentDate));
+        List<ItemBean> itemBeanList = new ArrayList<>();
+        if (cursor != null) {
+//            //如果列表不为空，则先清空，防止数据混乱
+//            if (!list.isEmpty()) {
+//                list.clear();
+//            }
+            while (cursor.moveToNext()) {
+                ItemBean itemBean = new ItemBean();
+                itemBean.setItemId(cursor.getString(cursor.getColumnIndex("id")));
+                itemBean.setItemType(cursor.getString(cursor.getColumnIndex("type")));
+                itemBean.setItemMoney(cursor.getString(cursor.getColumnIndex("money")));
+                itemBean.setItemNote(cursor.getString(cursor.getColumnIndex("note")));
+                itemBean.setItemDate(cursor.getString(cursor.getColumnIndex("date")));
+                itemBean.setItemCategory(table);
+                itemBeanList.add(itemBean);
+            }
+            cursor.close();
+        }
+        return itemBeanList;
     }
 }
