@@ -8,6 +8,7 @@ import android.database.sqlite.SQLiteOpenHelper;
 import android.util.Log;
 import android.widget.Toast;
 
+import java.sql.SQLData;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -155,13 +156,44 @@ public class DataBaseHelper extends SQLiteOpenHelper {
     //获取所有账目数据
     public Cursor getAllItemData(String table) {
         SQLiteDatabase database = getWritableDatabase();
-        return database.query(table,null,null,null,null,null,"date DESC");
+        return database.query(table,null,null,null,null,null,"DATE(date) DESC");
     }
 
     //获取所有类型数据
     public Cursor getAllTypeData(String table) {
         SQLiteDatabase database = getWritableDatabase();
         return database.query(table, null, null ,null ,null, null, null);
+    }
+
+    /**
+     * 获取本月的记录
+     * @param table 表名：Payment or Income
+     * @param currentDate 当前年月日
+     * @return 数据的游标
+     */
+    public Cursor getMonthData(String table, String currentDate) {
+        SQLiteDatabase database = getWritableDatabase();
+//        String[] parts= currentDate.split("-");
+//        StringBuilder sql = new StringBuilder();
+//        sql.append("select * from ");
+//        sql.append(table);
+////        sql.append(" where date >= ");
+//        sql.append(" where date between ");
+//        sql.append("'");
+//        sql.append(parts[0]);
+//        sql.append("-");
+//        sql.append(parts[1]);
+//        sql.append("-1'");
+//        sql.append(" and  ? ");
+//        Log.i("month",sql.toString());
+//        Log.i("month",currentDate);
+//        return database.rawQuery(sql.toString(), new String[]{currentDate});
+//        String col = "date between '" + parts[0] + "-" + parts[1] + "-" + "01'  and ?";
+        //使用SQLite中的strftime()函数来进行指定月份查询
+        String col = "strftime('%m', date) = ?";
+        Log.i("month", col);
+        Log.i("month", currentDate);
+        return database.query(table, null, col, new String[]{currentDate.split("-")[1]}, null, null, "DATE(date) DESC");
     }
 
     //查询账目数据
@@ -176,7 +208,7 @@ public class DataBaseHelper extends SQLiteOpenHelper {
                 col = col + allCol[i] + "=? ";
                 if (--sum > 0) col += "and ";
             }
-        return database.query(table,null, col, condition,null,null,"date DESC");
+        return database.query(table,null, col, condition,null,null,"DATE(date) DESC");
     }
 
     /**
@@ -188,7 +220,7 @@ public class DataBaseHelper extends SQLiteOpenHelper {
      */
     public Cursor queryItemData(String table, String columns, String[] condition) {
         SQLiteDatabase database = getWritableDatabase();
-        return database.query(table,null, columns, condition,null,null,"date DESC");
+        return database.query(table,null, columns, condition,null,null,"DATE(date) DESC");
     }
 
     /**
