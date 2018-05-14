@@ -705,7 +705,10 @@ public class MainActivity extends AppCompatActivity {
                             }
                             if (switchDate.isChecked()) {
                                 columns.add("date");
-                                condition.add(date.getYear() + "-" + (date.getMonth() + 1) + "-" + date.getDayOfMonth());
+                                //对日期进行处理，默认月份为0-11，改为1-12，同时把时间按YYYY-MM-dd的格式来存储
+                                String month = date.getMonth() < 9 ? "0" + (date.getMonth() + 1) : Integer.toString(date.getMonth() + 1);
+                                String day = date.getDayOfMonth() < 10 ? "0" + date.getDayOfMonth(): Integer.toString(date.getDayOfMonth());
+                                condition.add(date.getYear() + "-" + month + "-" + day);
                             }
                         }
                         if (switchCategory.isChecked()) { //如果类别选项开启，分类查询（支出或收入）
