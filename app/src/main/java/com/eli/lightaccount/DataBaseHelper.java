@@ -80,11 +80,11 @@ public class DataBaseHelper extends SQLiteOpenHelper {
             initTypeIncome(db);
 
 
-            Toast.makeText(mContext,"成功创建数据库", Toast.LENGTH_SHORT).show();
-//            Log.i("DB","success");
+//            Toast.makeText(mContext,"成功创建数据库", Toast.LENGTH_SHORT).show();
+            Log.i("DB","success");
         } catch (android.database.SQLException e) {
-//            Log.i("DB","failed");
-            Toast.makeText(mContext,"创建数据库失败",Toast.LENGTH_LONG).show();
+            Log.i("DB","failed");
+//            Toast.makeText(mContext,"创建数据库失败",Toast.LENGTH_LONG).show();
         }
     }
 
