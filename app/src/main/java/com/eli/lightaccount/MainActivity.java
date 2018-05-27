@@ -334,7 +334,7 @@ public class MainActivity extends AppCompatActivity {
 //                        Date d = new Date(timeStamp);
 //                        Toast.makeText(MainActivity.this, Long.toString(timeStamp)+ "和" + d, Toast.LENGTH_LONG ).show();
                         } else {
-                            Toast.makeText(MainActivity.this, "金额不能为空且大于0", Toast.LENGTH_LONG).show();
+                            Toast.makeText(MainActivity.this, "金额不能为空且需大于0", Toast.LENGTH_LONG).show();
                         }
                     }
                 });
@@ -522,7 +522,7 @@ public class MainActivity extends AppCompatActivity {
                             mAdapter.notifyDataSetChanged();
                         } else {
 //                            Toast.makeText(MainActivity.this, type.getSelectedItem().toString(), Toast.LENGTH_LONG).show();
-                            Toast.makeText(MainActivity.this, "金额不能为空且大于0", Toast.LENGTH_LONG).show();
+                            Toast.makeText(MainActivity.this, "金额不能为空且需大于0", Toast.LENGTH_LONG).show();
                         }
                     }
                 });
